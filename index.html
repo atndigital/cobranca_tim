@@ -717,7 +717,7 @@ async function salvarSnapshot(safra, pctEstorno, totalEstorno, gross) {
 function parseSafra(safraStr) {
   if (!safraStr) return null;
   const upper = (safraStr + '').toUpperCase()
-    .replace('MARCO','MARCO').replace('MARÇO','MARCO');
+    .replace('MARCO','MARCO').replace('MAR\u00c7O','MARCO');
   const nomes = ['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO',
                  'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
   for (let i = 0; i < nomes.length; i++) {
@@ -1352,29 +1352,29 @@ async function processarArquivo(file){
     const getCol=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
     const safraDate=parseSafra(safra);
     const registros=rows.map(row=>{
-      const numAcesso=limpaTel(getCol(row,'Numero de acesso','NÃºmero de acesso','Número de acesso','NUMERO_ACESSO'));
+      const numAcesso=limpaTel(getCol(row,'Numero de acesso','N\u00c3\u00bamero de acesso','N\u00famero de acesso','NUMERO_ACESSO'));
       const cpf=(getCol(row,'Cpf','CPF')+'').replace(/\D/g,'');
-      const statusAcesso=getCol(row,'Status do numero de acesso','Status do nÃºmero de acesso','Status do número de acesso','STATUS_ACESSO');
+      const statusAcesso=getCol(row,'Status do numero de acesso','Status do n\u00c3\u00bamero de acesso','Status do n\u00famero de acesso','STATUS_ACESSO');
       let fatNum='',fatVal=0,fatVenc='',fatStatus='',fatLinha='',diasAtraso=0;
       // Encontrar fatura mais urgente aberta (menor vencimento)
       const faturas=[];
       for(let i=1;i<=3;i++){
         
-        const status=getCol(row,...[i+'ª fatura - Status da fatura',i+'a fatura - Status da fatura',i+'\u00aa fatura - Status da fatura']);
+        const status=getCol(row,...[i+'\u00aa fatura - Status da fatura',i+'a fatura - Status da fatura',i+'\u00aa fatura - Status da fatura']);
         if((status||'').toLowerCase()==='aberta'){
-          const venc=getCol(row,...[i+'ª fatura - Data de vencimento',i+'\u00aa fatura - Data de vencimento'])||'';
-          const valStr=getCol(row,...[i+'ª fatura - Preço da fatura',i+'ª fatura - Preco da fatura',i+'\u00aa fatura - Pre\u00e7o da fatura'])||'0';
+          const venc=getCol(row,...[i+'\u00aa fatura - Data de vencimento',i+'\u00aa fatura - Data de vencimento'])||'';
+          const valStr=getCol(row,...[i+'\u00aa fatura - Pre\u00e7o da fatura',i+'\u00aa fatura - Preco da fatura',i+'\u00aa fatura - Pre\u00e7o da fatura'])||'0';
           const val=parseFloat(valStr.replace('R$','').replace(/\./g,'').replace(',','.'))||0;
-          const num=getCol(row,...[i+'ª fatura - Número da fatura',i+'\u00aa fatura - N\u00famero da fatura'])||'';
-          const dias=parseInt(getCol(row,...[i+'ª fatura - Dias de atraso',i+'\u00aa fatura - Dias de atraso'])||'0')||0;
-          const linha=getCol(row,...[i+'ª fatura - Linha digitável',i+'\u00aa fatura - Linha digit\u00e1vel'])||'';
+          const num=getCol(row,...[i+'\u00aa fatura - N\u00famero da fatura',i+'\u00aa fatura - N\u00famero da fatura'])||'';
+          const dias=parseInt(getCol(row,...[i+'\u00aa fatura - Dias de atraso',i+'\u00aa fatura - Dias de atraso'])||'0')||0;
+          const linha=getCol(row,...[i+'\u00aa fatura - Linha digit\u00e1vel',i+'\u00aa fatura - Linha digit\u00e1vel'])||'';
           faturas.push({num,val,venc,dias,linha});
         }
       }
       // Ordenar por vencimento (menor primeiro = mais urgente)
       faturas.sort((a,b)=>a.venc<b.venc?-1:1);
       if(faturas.length>0){const f=faturas[0];fatNum=f.num;fatVal=f.val;fatVenc=f.venc;fatStatus='Aberta';fatLinha=f.linha;diasAtraso=f.dias;}
-      else{fatStatus=getCol(row,'1ª fatura - Status da fatura','1\u00aa fatura - Status da fatura')||'Sem fatura';}
+      else{fatStatus=getCol(row,'1\u00aa fatura - Status da fatura','1\u00aa fatura - Status da fatura')||'Sem fatura';}
       const matched=mapaPort[numAcesso]||null;
       const portabilidade=matched?matched.portabilidade:'Portabilidade nao Concluida';
       const nomeCon=matched?matched.nome:'';
