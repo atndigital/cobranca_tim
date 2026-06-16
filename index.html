@@ -1505,7 +1505,13 @@ async function processarArquivo(file){
       const equipe=matched?matched.equipe:'';
       const etapa=determinarEtapa(diasAtraso,portabilidade,statusAcesso,fatStatus);
       const vencISO=fatVenc?converteData(fatVenc):null;
-      const tmpCliente={'STATUS ACESSO':statusAcesso,'STATUS PAGAMENTO':fatStatus,VENCIMENTO:vencISO};
+      const tmpCliente={
+        'STATUS ACESSO':statusAcesso,
+        'STATUS 1\u00aa FATURA':fat1status||'',
+        'STATUS 2\u00aa FATURA':fat2status||'',
+        'STATUS PAGAMENTO':fatStatus,
+        VENCIMENTO:vencISO
+      };
       const{estorno,tipo:tipoEstorno}=classificarEstorno(tmpCliente,safraDate);
       return{
       SAFRA:safra,
@@ -1515,7 +1521,9 @@ async function processarArquivo(file){
       'NUMERO PORTADO':numAcesso,
       'NUMERO LINHA':numAcesso,
       'STATUS ACESSO':statusAcesso,
-      FATURA:(fatNum?parseInt(fatNum)||null:null),
+      FATURA:fatNum||null,
+      'STATUS 1\u00aa FATURA':fat1status||null,
+      'STATUS 2\u00aa FATURA':fat2status||null,
       'STATUS PAGAMENTO':fatStatus||null,
       VALOR:fatVal||null,
       VENCIMENTO:vencISO||null,
@@ -1536,7 +1544,8 @@ async function processarArquivo(file){
       if(modo==='nova'){
         // Valid DB columns only - exact names
         const VALID_COLS = new Set(['SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','NUMERO LINHA',
-          'STATUS ACESSO','FATURA','STATUS PAGAMENTO','VALOR','VENCIMENTO','DIAS ATRASO',
+          'STATUS ACESSO','FATURA','STATUS 1\u00aa FATURA','STATUS 2\u00aa FATURA',
+          'STATUS PAGAMENTO','VALOR','VENCIMENTO','DIAS ATRASO',
           'PORTABILIDADE','EQUIPE','ETAPA','ESTORNO','TIPO_ESTORNO','LINHA DIGITAVEL']);
         const cleanBatch=batch.map(r=>{
           const o={};
