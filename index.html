@@ -86,6 +86,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .card.red .card-value{color:var(--red);}
 .card.yellow .card-value{color:var(--yellow);}
 .card.purple .card-value{color:var(--purple);}
+.card.gray .card-accent{background:var(--gray);}
+.card.gray .card-value{color:var(--gray);}
 .card-accent{position:absolute;top:0;left:0;bottom:0;width:4px;border-radius:10px 0 0 10px;}
 .card.blue .card-accent{background:var(--blue);}
 .card.green .card-accent{background:var(--green);}
@@ -412,17 +414,22 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
           <button class="btn btn-ghost btn-sm" onclick="exportarRespostas()">⬇️ Exportar CSV</button>
         </div>
       </div>
-      <div style="display:flex;gap:.7rem;margin-bottom:.9rem;flex-wrap:wrap">
-        <div style="flex:1;min-width:130px"><label class="fl">Período</label>
-          <select id="filt-resp-periodo" onchange="filtrarRespostas()">
-            <option value="todos">Todos</option><option value="hoje">Hoje</option>
-            <option value="7d">Últimos 7 dias</option><option value="30d">Últimos 30 dias</option>
-          </select></div>
+      <div style="display:flex;gap:.7rem;margin-bottom:.9rem;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:130px"><label class="fl">De</label>
+          <input type="date" id="filt-resp-de" onchange="filtrarRespostas()"></div>
+        <div style="flex:1;min-width:130px"><label class="fl">Até</label>
+          <input type="date" id="filt-resp-ate" onchange="filtrarRespostas()"></div>
         <div style="flex:1;min-width:130px"><label class="fl">Tipo</label>
           <select id="filt-resp-tipo" onchange="filtrarRespostas()">
             <option value="todos">Todos</option><option value="BOLETO">Boleto</option>
             <option value="CODIGO_PIX">PIX</option><option value="BLOQUEAR">Bloquear</option>
           </select></div>
+        <div style="display:flex;gap:.4rem;padding-bottom:1px">
+          <button class="btn btn-ghost btn-sm" onclick="setRespPeriodo(0)">Hoje</button>
+          <button class="btn btn-ghost btn-sm" onclick="setRespPeriodo(7)">7d</button>
+          <button class="btn btn-ghost btn-sm" onclick="setRespPeriodo(30)">30d</button>
+          <button class="btn btn-ghost btn-sm" onclick="setRespPeriodo(-1)">Tudo</button>
+        </div>
       </div>
       <div class="resp-cards">
         <div class="resp-card boleto"><div class="resp-icon">🧾</div><div class="resp-label">Solicitaram Boleto</div><div class="resp-value" id="r-boleto">—</div><div class="resp-pct" id="r-boleto-pct">— do total</div><div style="margin-top:.6rem"><div class="progress"><div class="progress-bar" id="r-boleto-bar" style="background:var(--blue);width:0%"></div></div></div></div>
@@ -705,12 +712,12 @@ async function carregarSnapshots() {
 async function salvarSnapshot(safra, pctEstorno, totalEstorno, gross) {
   if (!sb) return;
   const hoje = new Date().toISOString().slice(0,10);
-  await sb.from('snapshots_estorno').upsert({
+  try { await sb.from('snapshots_estorno').upsert({
     safra, data_snapshot: hoje,
     pct_estorno: parseFloat(pctEstorno),
     total_estorno: totalEstorno,
     gross
-  }, {onConflict:'safra,data_snapshot'}).catch(()=>{});
+  }, {onConflict:'safra,data_snapshot'}); } catch(e) {}
 }
 
 // REGRAS DE ESTORNO
@@ -1047,7 +1054,17 @@ function renderControle() {
   const prev = data.filter(r => r.ETAPA==='Preventivo').length;
   const urg = data.filter(r => ['Etapa 3','Etapa 4','Etapa 5','Etapa 6','Etapa 7','Etapa 8'].includes(r.ETAPA)).length;
   const val = data.reduce((s,r) => s+(parseFloat(r.VALOR)||0), 0);
-  setEl('c-total',fmt(data.length)); setEl('c-prev',fmt(prev)); setEl('c-urg',fmt(urg)); setEl('c-valor',fmtBRL(val));
+  setEl('c-total',fmt(data.length));
+  setEl('c-prev',fmt(data.filter(r=>r.ETAPA==='Preventivo').length));
+  setEl('c-e1',fmt(data.filter(r=>r.ETAPA==='Etapa 1').length));
+  setEl('c-e2',fmt(data.filter(r=>r.ETAPA==='Etapa 2').length));
+  setEl('c-e3',fmt(data.filter(r=>r.ETAPA==='Etapa 3').length));
+  setEl('c-e4',fmt(data.filter(r=>r.ETAPA==='Etapa 4').length));
+  setEl('c-e5',fmt(data.filter(r=>r.ETAPA==='Etapa 5').length));
+  setEl('c-e6',fmt(data.filter(r=>r.ETAPA==='Etapa 6').length));
+  setEl('c-e7',fmt(data.filter(r=>r.ETAPA==='Etapa 7').length));
+  setEl('c-e8',fmt(data.filter(r=>r.ETAPA==='Etapa 8').length));
+  setEl('c-valor',fmtBRL(val));
   const tbody = document.getElementById('tbody-controle');
   if (!page.length) {
     tbody.innerHTML = '<tr><td colspan="12"><div class="empty-state"><p>Nenhum registro</p></div></td></tr>';
@@ -1228,7 +1245,7 @@ async function dispararEtapa(etapa) {
       dadosControle.forEach(r => { if(ids.has(r.NUMERO_ACESSO||r.TELEFONE_PORTADO)) r.ULTIMO_ENVIO=hoje_str; });
       if (sb) {
         for (const r of elegiveis) {
-          await sb.from('controle_envio').update({ULTIMO_ENVIO:hoje_str}).eq('SAFRA',r.SAFRA).eq('NUMERO_ACESSO',r.NUMERO_ACESSO||r.TELEFONE_PORTADO).catch(()=>{});
+          try { await sb.from('controle_envio').update({ULTIMO_ENVIO:hoje_str}).eq('SAFRA',r.SAFRA).eq('NUMERO_ACESSO',r.NUMERO_ACESSO||r.TELEFONE_PORTADO); } catch(e) {}
         }
       }
     } else { alert('Erro ao enviar para n8n: '+resp.status); }
@@ -1250,12 +1267,40 @@ function normTipo(r) {
   if(v.includes('BLOQUEAR'))return'BLOQUEAR';
   return v;
 }
+function setRespPeriodo(dias) {
+  const ate = new Date();
+  const de = new Date();
+  const fmtDate = d => d.toISOString().slice(0,10);
+  const elDe = document.getElementById('filt-resp-de');
+  const elAte = document.getElementById('filt-resp-ate');
+  if (dias === -1) {
+    if (elDe) elDe.value = '';
+    if (elAte) elAte.value = '';
+  } else if (dias === 0) {
+    if (elDe) elDe.value = fmtDate(ate);
+    if (elAte) elAte.value = fmtDate(ate);
+  } else {
+    de.setDate(ate.getDate() - dias);
+    if (elDe) elDe.value = fmtDate(de);
+    if (elAte) elAte.value = fmtDate(ate);
+  }
+  filtrarRespostas();
+}
+
 function getRespostasFiltradas() {
-  const periodo=(document.getElementById('filt-resp-periodo')||{}).value||'todos';
-  const tipo=(document.getElementById('filt-resp-tipo')||{}).value||'todos';
-  let data=[...dadosRespostas];
-  if(periodo!=='todos'){const agora=new Date(),dias=periodo==='hoje'?0:periodo==='7d'?7:30;data=data.filter(r=>{if(!r.created_at)return false;const diff=(agora-new Date(r.created_at))/86400000;return dias===0?diff<1:diff<=dias;});}
-  if(tipo!=='todos')data=data.filter(r=>normTipo(r)===tipo);
+  const deVal = (document.getElementById('filt-resp-de')||{}).value||'';
+  const ateVal = (document.getElementById('filt-resp-ate')||{}).value||'';
+  const tipo = (document.getElementById('filt-resp-tipo')||{}).value||'todos';
+  let data = [...dadosRespostas];
+  if (deVal) {
+    const de = new Date(deVal + 'T00:00:00');
+    data = data.filter(r => r.created_at && new Date(r.created_at) >= de);
+  }
+  if (ateVal) {
+    const ate = new Date(ateVal + 'T23:59:59');
+    data = data.filter(r => r.created_at && new Date(r.created_at) <= ate);
+  }
+  if (tipo !== 'todos') data = data.filter(r => normTipo(r) === tipo);
   return data;
 }
 function filtrarRespostas(){respPage=0;renderRespostas();}
@@ -1401,7 +1446,7 @@ async function processarArquivo(file){
         // Identificar pagamentos automaticamente
         const pagamentos=registros.filter(r=>(r.STATUS_FATURA||'').toLowerCase()==='paga');
         for(const p of pagamentos){
-          await sb.from('historico_pagamentos').upsert({SAFRA:p.SAFRA,CPF:p.CPF,NOME:p.NOME,NUMERO_PORTADO:p.TELEFONE_PORTADO,FATURA:p.FATURA,VALOR:p.VALOR,VENCIMENTO:p.VENCIMENTO,DATA_PAGAMENTO:new Date().toISOString().slice(0,10)},{onConflict:'SAFRA,NUMERO_PORTADO,FATURA',ignoreDuplicates:true}).catch(()=>{});
+          await sb.from('historico_pagamentos').upsert({SAFRA:p.SAFRA,CPF:p.CPF,NOME:p.NOME,NUMERO_PORTADO:p.TELEFONE_PORTADO,FATURA:p.FATURA,VALOR:p.VALOR,VENCIMENTO:p.VENCIMENTO,DATA_PAGAMENTO:new Date().toISOString().slice(0,10)},{onConflict:'SAFRA,NUMERO_PORTADO,FATURA',ignoreDuplicates:true});
         }
       }
     }
@@ -1409,7 +1454,7 @@ async function processarArquivo(file){
     const totalEstorno=registros.filter(r=>r.ESTORNO).length;
     const pctSnap=registros.length>0?(totalEstorno/registros.length*100).toFixed(1):'0';
     await salvarSnapshot(safra,pctSnap,totalEstorno,registros.length);
-    await sb.from('historico_uploads').insert({safra,modo,total_registros:registros.length,inseridos:modo==='nova'?inseridos:0,atualizados:modo==='atualizar'?atualizados:0,erros,status:erros===0?'Sucesso':'Parcial',created_at:new Date().toISOString()}).catch(()=>{});
+    await sb.from('historico_uploads').insert({safra,modo,total_registros:registros.length,inseridos:modo==='nova'?inseridos:0,atualizados:modo==='atualizar'?atualizados:0,erros,status:erros===0?'Sucesso':'Parcial',created_at:new Date().toISOString()});
     setUploadProgress(false,'',100);
     result.innerHTML='<div class="alert alert-ok">Upload concluido! '+fmt(modo==='nova'?inseridos:atualizados)+' registros '+(modo==='nova'?'inseridos':'atualizados')+(erros>0?' - '+erros+' erros':'')+'.</div>';
     await carregarControle();
