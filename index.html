@@ -724,6 +724,59 @@ async function salvarSnapshot(safra, pctEstorno, totalEstorno, gross) {
 }
 
 // REGRAS DE ESTORNO
+
+// Classifica o tipo de fatura do cliente usando as duas colunas de status
+function classificarTipoFatura(r) {
+  const s1 = (r['STATUS 1\u00aa FATURA'] || r['STATUS 1 FATURA'] || '').toLowerCase();
+  const s2 = (r['STATUS 2\u00aa FATURA'] || r['STATUS 2 FATURA'] || '').toLowerCase();
+  const temF2 = s2 !== '' && s2 !== 'null';
+
+  if (!temF2) {
+    // Apenas 1 fatura
+    if (s1 === 'paga' || s1 === 'em negociacao' || s1 === 'parcelada' || s1 === 'ordem pagto' || s1 === 'pagamento cartao de credito') return '1 FATURA PAGA';
+    if (s1 === 'aberta') return '1 FATURA ABERTA';
+    return 'SEM ESTORNO';
+  } else {
+    // 2 faturas
+    const f1paga = s1 !== 'aberta' && s1 !== '';
+    const f2paga = s2 !== 'aberta' && s2 !== '';
+    const f1aberta = s1 === 'aberta';
+    const f2aberta = s2 === 'aberta';
+    if (!f1aberta && !f2aberta) return '2 FATURAS - 2 PGS';
+    if (f1aberta && f2aberta) return '2 FATURAS (2 ABERTA)';
+    if (!f1aberta && f2aberta) return '2 FATURAS (1 PAGA 2 ABERTA)';
+    if (f1aberta && !f2aberta) return '2 FATURAS (1 ABERTO 2 PAGA)';
+    return 'SEM ESTORNO';
+  }
+}
+
+function classificarEstorno(cliente, safraDate) {
+  if ((cliente['STATUS ACESSO'] || '') !== 'Ativo') {
+    return {estorno: false, tipo: 'CANCELADO'};
+  }
+  if (!safraDate) return {estorno: false, tipo: 'SEM DATA SAFRA'};
+
+  const fechamento = getFechamento(safraDate);
+  const limite2fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 2, 1);
+  const limite1fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 1, 1);
+
+  const vencStr = cliente['VENCIMENTO'] || '';
+  const venc = vencStr ? new Date(vencStr) : null;
+
+  // Tipo de fatura baseado nas colunas STATUS 1\u00aa FATURA e STATUS 2\u00aa FATURA
+  const tipoFat = classificarTipoFatura(cliente);
+  const temAberta = tipoFat.includes('ABERTA') || tipoFat === '1 FATURA ABERTA';
+
+  if (!temAberta) return {estorno: false, tipo: tipoFat};
+  if (!venc) return {estorno: false, tipo: 'SEM ESTORNO'};
+
+  const vencMes = new Date(venc.getFullYear(), venc.getMonth(), 1);
+
+  if (vencMes <= limite2fat) return {estorno: true, tipo: tipoFat};
+  if (vencMes.getTime() === limite1fat.getTime()) return {estorno: true, tipo: tipoFat};
+  return {estorno: false, tipo: 'SEM ESTORNO'};
+}
+
 function parseSafra(safraStr) {
   if (!safraStr) return null;
   const upper = (safraStr + '').toUpperCase()
@@ -799,9 +852,11 @@ function calcularEstornoPorSafra(safra) {
 
   ativos.forEach(r => {
     const res = classificarEstorno(r, safraDate);
+    // Contabiliza pelo tipo da fatura (independente de ser estorno ou nao)
+    const tipoFat = classificarTipoFatura(r);
     if (res.estorno) estornoClientes.push(r);
     else semEstorno.push(r);
-    if (det[res.tipo] !== undefined) det[res.tipo]++;
+    if (det[tipoFat] !== undefined) det[tipoFat]++;
     else det['SEM ESTORNO']++;
   });
 
@@ -1452,7 +1507,26 @@ async function processarArquivo(file){
       const vencISO=fatVenc?converteData(fatVenc):null;
       const tmpCliente={'STATUS ACESSO':statusAcesso,'STATUS PAGAMENTO':fatStatus,VENCIMENTO:vencISO};
       const{estorno,tipo:tipoEstorno}=classificarEstorno(tmpCliente,safraDate);
-      return{SAFRA:safra,CPF:cpf,NOME:nomeCon,'NUMERO DE ACESSO':numAcesso,'NUMERO PORTADO':numAcesso,'NUMERO LINHA':numAcesso,'STATUS ACESSO':statusAcesso,FATURA:fatNum,VALOR:fatVal||null,VENCIMENTO:vencISO,'DIAS ATRASO':diasAtraso,'STATUS PAGAMENTO':fatStatus,'LINHA DIGITAVEL':fatLinha,PORTABILIDADE:portabilidade,EQUIPE:equipe,ETAPA:etapa,ESTORNO:estorno,TIPO_ESTORNO:tipoEstorno};
+      return{
+      SAFRA:safra,
+      CPF:cpf,
+      NOME:nomeCon,
+      'NUMERO DE ACESSO':numAcesso,
+      'NUMERO PORTADO':numAcesso,
+      'NUMERO LINHA':numAcesso,
+      'STATUS ACESSO':statusAcesso,
+      FATURA:(fatNum?parseInt(fatNum)||null:null),
+      'STATUS PAGAMENTO':fatStatus||null,
+      VALOR:fatVal||null,
+      VENCIMENTO:vencISO||null,
+      'DIAS ATRASO':diasAtraso||null,
+      PORTABILIDADE:portabilidade||null,
+      EQUIPE:equipe||null,
+      ETAPA:etapa||null,
+      ESTORNO:estorno,
+      TIPO_ESTORNO:tipoEstorno||null,
+      'LINHA DIGITAVEL':fatLinha||null
+    };
     });
     setUploadProgress(true,'Enviando para Supabase...',60);
     let inseridos=0,atualizados=0,erros=0;
@@ -1460,10 +1534,21 @@ async function processarArquivo(file){
       const batch=registros.slice(i,i+500);
       setUploadProgress(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registros.length/500)+'...',60+(i/registros.length*35));
       if(modo==='nova'){
-        // Clean batch: replace empty strings with null for typed columns
-        const cleanBatch=batch.map(r=>{const o={};Object.keys(r).forEach(k=>{o[k]=r[k]===''?null:r[k];});return o;});
+        // Valid DB columns only - exact names
+        const VALID_COLS = new Set(['SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','NUMERO LINHA',
+          'STATUS ACESSO','FATURA','STATUS PAGAMENTO','VALOR','VENCIMENTO','DIAS ATRASO',
+          'PORTABILIDADE','EQUIPE','ETAPA','ESTORNO','TIPO_ESTORNO','LINHA DIGITAVEL']);
+        const cleanBatch=batch.map(r=>{
+          const o={};
+          Object.keys(r).forEach(k=>{
+            if(VALID_COLS.has(k)){
+              o[k] = (r[k]===''||r[k]===undefined) ? null : r[k];
+            }
+          });
+          return o;
+        });
         const{error}=await sb.from('controle_envio').upsert(cleanBatch,{onConflict:'NUMERO DE ACESSO,FATURA,SAFRA',ignoreDuplicates:false});
-        if(error){erros+=batch.length;console.error('upsert error:',error.message,error.details);}else inseridos+=batch.length;
+        if(error){erros+=batch.length;console.error('upsert error:',error.message,error.details,JSON.stringify(cleanBatch[0]));}else inseridos+=batch.length;
       }else{
         for(const reg of batch){
           const{error}=await sb.from('controle_envio').update({'STATUS ACESSO':reg.STATUS_ACESSO,VALOR:reg.VALOR,VENCIMENTO:reg.VENCIMENTO,'DIAS ATRASO':reg.DIAS_ATRASO,'STATUS PAGAMENTO':reg.STATUS_FATURA,ETAPA:reg.ETAPA,ESTORNO:reg.ESTORNO,TIPO_ESTORNO:reg.TIPO_ESTORNO}).eq('SAFRA',safra).eq('NUMERO DE ACESSO',reg.NUMERO_ACESSO);
