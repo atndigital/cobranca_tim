@@ -1005,13 +1005,29 @@ function downloadSiebel(safra) {
     const res = classificarEstorno(r, safraDate);
     return res.estorno;
   });
-  if (!clientes.length) { alert('Nenhum cliente para o Siebel.'); return; }
-  const linhas = ['Cpf\tNumero de acesso 1\tNumero de acesso 2'];
+  if (!clientes.length) { alert('Nenhum cliente elegivel para Siebel.'); return; }
+
+  // Cabecalhos completos do modelo Siebel (21 colunas)
+  const headers = [
+    'Cpf',
+    'Numero de acesso 1','Numero de acesso 2','Numero de acesso 3','Numero de acesso 4',
+    'Numero de acesso 5','Numero de acesso 6','Numero de acesso 7','Numero de acesso 8',
+    'Numero de acesso 9','Numero de acesso 10',
+    'Codigo externo 1','Codigo externo 2','Codigo externo 3','Codigo externo 4',
+    'Codigo externo 5','Codigo externo 6','Codigo externo 7','Codigo externo 8',
+    'Codigo externo 9','Codigo externo 10'
+  ];
+
+  const linhas = [headers.join(',')];
   clientes.forEach(r => {
     const cpf = (r['CPF']||'').replace(/\D/g,'');
     const acesso = (r['NUMERO DE ACESSO']||r['NUMERO PORTADO']||'').replace(/\D/g,'');
-    linhas.push(cpf + '\t' + acesso + '\t' + acesso);
+    // Preenche CPF, acesso 1, acesso 2 (repetido); restante vazio
+    const row = [cpf, acesso, acesso, '', '', '', '', '', '', '', '',
+                 '', '', '', '', '', '', '', '', '', ''];
+    linhas.push(row.join(','));
   });
+
   download('\ufeff' + linhas.join('\n'), 'siebel_' + safra.replace(/\s/g,'_') + '_' + hoje() + '.csv', 'text/csv;charset=utf-8');
   alert('Siebel exportado: ' + fmt(clientes.length) + ' clientes.');
 }
@@ -1444,8 +1460,10 @@ async function processarArquivo(file){
       const batch=registros.slice(i,i+500);
       setUploadProgress(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registros.length/500)+'...',60+(i/registros.length*35));
       if(modo==='nova'){
-        const{error}=await sb.from('controle_envio').upsert(batch,{onConflict:'NUMERO DE ACESSO,FATURA,SAFRA',ignoreDuplicates:false});
-        if(error){erros+=batch.length;console.error(error);}else inseridos+=batch.length;
+        // Clean batch: replace empty strings with null for typed columns
+        const cleanBatch=batch.map(r=>{const o={};Object.keys(r).forEach(k=>{o[k]=r[k]===''?null:r[k];});return o;});
+        const{error}=await sb.from('controle_envio').upsert(cleanBatch,{onConflict:'NUMERO DE ACESSO,FATURA,SAFRA',ignoreDuplicates:false});
+        if(error){erros+=batch.length;console.error('upsert error:',error.message,error.details);}else inseridos+=batch.length;
       }else{
         for(const reg of batch){
           const{error}=await sb.from('controle_envio').update({'STATUS ACESSO':reg.STATUS_ACESSO,VALOR:reg.VALOR,VENCIMENTO:reg.VENCIMENTO,'DIAS ATRASO':reg.DIAS_ATRASO,'STATUS PAGAMENTO':reg.STATUS_FATURA,ETAPA:reg.ETAPA,ESTORNO:reg.ESTORNO,TIPO_ESTORNO:reg.TIPO_ESTORNO}).eq('SAFRA',safra).eq('NUMERO DE ACESSO',reg.NUMERO_ACESSO);
