@@ -1248,7 +1248,7 @@ async function dispararEtapa(etapa) {
       dadosControle.forEach(r => { if(ids.has(r['NUMERO DE ACESSO']||r['NUMERO PORTADO'])) r['ULTIMO ENVIO']=hoje_str; });
       if (sb) {
         for (const r of elegiveis) {
-          try { await sb.from('controle_envio').update({'ULTIMO ENVIO':hoje_str}).eq('SAFRA',r['SAFRA']).eq('NUMERO DE ACESSO',r['NUMERO DE ACESSO']||r['NUMERO PORTADO']); } catch(e) {}
+          try { try{await sb.from('controle_envio').update({'ULTIMO ENVIO':hoje_str}).eq('SAFRA',r['SAFRA']).eq('NUMERO DE ACESSO',r['NUMERO DE ACESSO']||r['NUMERO PORTADO']);}catch(e){} } catch(e) {}
         }
       }
     } else { alert('Erro ao enviar para n8n: '+resp.status); }
@@ -1444,7 +1444,7 @@ async function processarArquivo(file){
       const batch=registros.slice(i,i+500);
       setUploadProgress(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registros.length/500)+'...',60+(i/registros.length*35));
       if(modo==='nova'){
-        const{error}=await sb.from('controle_envio').upsert(batch,{onConflict:'SAFRA,NUMERO DE ACESSO',ignoreDuplicates:false});
+        const{error}=await sb.from('controle_envio').upsert(batch,{onConflict:'NUMERO DE ACESSO,FATURA,SAFRA',ignoreDuplicates:false});
         if(error){erros+=batch.length;console.error(error);}else inseridos+=batch.length;
       }else{
         for(const reg of batch){
