@@ -705,19 +705,22 @@ async function recarregarTudo() {
 // SNAPSHOTS
 async function carregarSnapshots() {
   if (!sb) return;
-  const {data} = await sb.from('snapshots_estorno').select('*').order('data_snapshot',{ascending:true}).limit(500);
-  dadosSnapshots = data || [];
+  try {
+    const {data,error} = await sb.from('snapshots_estorno').select('*').order('DATA',{ascending:true}).limit(500);
+    if(error){console.warn('snapshots_estorno:',error.message);dadosSnapshots=[];return;}
+    dadosSnapshots = data || [];
+  } catch(e) {console.warn('snapshots erro:',e.message);dadosSnapshots=[];}
 }
 
 async function salvarSnapshot(safra, pctEstorno, totalEstorno, gross) {
   if (!sb) return;
   const hoje = new Date().toISOString().slice(0,10);
   try { await sb.from('snapshots_estorno').upsert({
-    safra, data_snapshot: hoje,
-    pct_estorno: parseFloat(pctEstorno),
-    total_estorno: totalEstorno,
+    safra, DATA: hoje,
+    PCT_ESTORNO: parseFloat(pctEstorno),
+    ESTORNO: totalEstorno,
     gross
-  }, {onConflict:'safra,data_snapshot'}); } catch(e) {}
+  }, {onConflict:'SAFRA,DATA'}); } catch(e) {}
 }
 
 // REGRAS DE ESTORNO
@@ -744,7 +747,7 @@ function getFechamento(safraDate) {
 
 function classificarEstorno(cliente, safraDate) {
   // Tudo diferente de Ativo = cancelado, nao conta para disparo
-  if ((cliente.STATUS_ACESSO || '') !== 'Ativo') {
+  if ((cliente['STATUS ACESSO'] || '') !== 'Ativo') {
     return {estorno: false, tipo: 'CANCELADO'};
   }
 
@@ -756,9 +759,9 @@ function classificarEstorno(cliente, safraDate) {
   // Limite para 1 fatura: venc = fechamento - 1 mes
   const limite1fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 1, 1);
 
-  const vencStr = cliente.VENCIMENTO || '';
+  const vencStr = cliente['VENCIMENTO'] || '';
   const venc = vencStr ? new Date(vencStr) : null;
-  const statusFat = (cliente.STATUS_FATURA || '').toLowerCase();
+  const statusFat = (cliente['STATUS PAGAMENTO'] || '').toLowerCase();
 
   if (!venc || statusFat !== 'aberta') {
     if (statusFat === 'paga') return {estorno: false, tipo: '1 FATURA PAGA'};
@@ -773,13 +776,13 @@ function classificarEstorno(cliente, safraDate) {
 }
 
 function calcularEstornoPorSafra(safra) {
-  const dados = dadosControle.filter(r => !safra || r.SAFRA === safra);
+  const dados = dadosControle.filter(r => !safra || r['SAFRA'] === safra);
   const safraDate = parseSafra(safra || (dados[0] && dados[0].SAFRA));
   const fechamento = getFechamento(safraDate);
 
   const gross = dados.length;
-  const ativos = dados.filter(r => r.STATUS_ACESSO === 'Ativo');
-  const cancelados = dados.filter(r => r.STATUS_ACESSO !== 'Ativo');
+  const ativos = dados.filter(r => r['STATUS ACESSO'] === 'Ativo');
+  const cancelados = dados.filter(r => r['STATUS ACESSO'] !== 'Ativo');
 
   const det = {
     'SEM ESTORNO': 0,
@@ -809,10 +812,10 @@ function calcularEstornoPorSafra(safra) {
   const pctEstorno = gross > 0 ? (estornoClientes.length / gross * 100).toFixed(1) : '0';
   const pctAtivos = gross > 0 ? (ativos.length / gross * 100).toFixed(1) : '0';
   const pctCanc = gross > 0 ? (cancelados.length / gross * 100).toFixed(1) : '0';
-  const cobrar = ativos.filter(r => r.ETAPA && (r.STATUS_FATURA||'').toLowerCase() === 'aberta');
+  const cobrar = ativos.filter(r => r['ETAPA'] && (r['STATUS PAGAMENTO']||'').toLowerCase() === 'aberta');
 
   // Evolucao: diferenca entre snapshot atual e anterior
-  const snaps = dadosSnapshots.filter(s => s.safra === safra).sort((a,b) => a.data_snapshot > b.data_snapshot ? 1 : -1);
+  const snaps = dadosSnapshots.filter(s => s['SAFRA'] === safra).sort((a,b) => a.data_snapshot > b.data_snapshot ? 1 : -1);
   let evolucao = null;
   if (snaps.length >= 2) {
     const ultimo = snaps[snaps.length-1].pct_estorno;
@@ -847,7 +850,7 @@ function renderEstorno() {
   const pctNum = parseFloat(res.pctEstorno);
   const pctCor = pctNum > 38 ? '#DC2626' : '#16A34A';
   const fechStr = res.fechamento ? res.fechamento.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : '--';
-  const pagsSafra = dadosHistorico.filter(r => r.SAFRA === safra);
+  const pagsSafra = dadosHistorico.filter(r => r['SAFRA'] === safra);
   const pctBaixas = res.estornoTratado > 0 ? (pagsSafra.length / res.estornoTratado * 100).toFixed(1) : '0';
   const pctReducao = res.estornoTratado > 0 ? (res.reducao / res.estornoTratado * 100).toFixed(1) : '0';
 
@@ -933,8 +936,8 @@ function renderEstorno() {
   // Grafico evolucao
   if (res.snaps.length > 1) {
     setTimeout(() => {
-      const snapDatas = res.snaps.map(s => s.data_snapshot);
-      const snapVals = res.snaps.map(s => parseFloat(s.pct_estorno));
+      const snapDatas = res.snaps.map(s => s['DATA']);
+      const snapVals = res.snaps.map(s => parseFloat(s['PCT_ESTORNO']));
       Plotly.newPlot('chart-evolucao', [
         {x: snapDatas, y: snapVals, type:'scatter', mode:'lines+markers',
          line: {color:'#DC2626', width:2},
@@ -998,15 +1001,15 @@ function downloadSiebel(safra) {
   if (!safra) { alert('Selecione a safra.'); return; }
   const safraDate = parseSafra(safra);
   const clientes = dadosControle.filter(r => {
-    if (r.SAFRA !== safra) return false;
+    if (r['SAFRA'] !== safra) return false;
     const res = classificarEstorno(r, safraDate);
     return res.estorno;
   });
   if (!clientes.length) { alert('Nenhum cliente para o Siebel.'); return; }
   const linhas = ['Cpf\tNumero de acesso 1\tNumero de acesso 2'];
   clientes.forEach(r => {
-    const cpf = (r.CPF||'').replace(/\D/g,'');
-    const acesso = (r.NUMERO_ACESSO||r.TELEFONE_PORTADO||'').replace(/\D/g,'');
+    const cpf = (r['CPF']||'').replace(/\D/g,'');
+    const acesso = (r['NUMERO DE ACESSO']||r['NUMERO PORTADO']||'').replace(/\D/g,'');
     linhas.push(cpf + '\t' + acesso + '\t' + acesso);
   });
   download('\ufeff' + linhas.join('\n'), 'siebel_' + safra.replace(/\s/g,'_') + '_' + hoje() + '.csv', 'text/csv;charset=utf-8');
@@ -1025,7 +1028,7 @@ async function carregarControle() {
     offset += 1000;
   }
   dadosControle = todos;
-  const safras = [...new Set(todos.map(r => r.SAFRA).filter(Boolean))].sort();
+  const safras = [...new Set(todos.map(r => r['SAFRA']).filter(Boolean))].sort();
   ['filt-safra','filt-equipe-safra','sel-safra-download','sel-safra-estorno','sel-safra-siebel'].forEach(id => {
     const sel = document.getElementById(id);
     if (sel) sel.innerHTML = '<option value="">Selecione a safra</option>' + safras.map(s => '<option>' + s + '</option>').join('');
@@ -1040,10 +1043,10 @@ function getDadosFiltrados() {
   const etapa = document.getElementById('filt-etapa').value;
   const port = document.getElementById('filt-port').value;
   return dadosControle.filter(r => {
-    if (safra && r.SAFRA !== safra) return false;
-    if (etapa && r.ETAPA !== etapa) return false;
-    if (port === 'Portabilidade Concluida' && r.PORTABILIDADE !== 'Portabilidade Concluida') return false;
-    if (port === 'nao' && r.PORTABILIDADE === 'Portabilidade Concluida') return false;
+    if (safra && r['SAFRA'] !== safra) return false;
+    if (etapa && r['ETAPA'] !== etapa) return false;
+    if (port === 'Portabilidade Concluida' && r['PORTABILIDADE'] !== 'Portabilidade Concluida') return false;
+    if (port === 'nao' && r['PORTABILIDADE'] === 'Portabilidade Concluida') return false;
     return true;
   });
 }
@@ -1051,19 +1054,19 @@ function getDadosFiltrados() {
 function renderControle() {
   const data = getDadosFiltrados();
   const page = data.slice(ctrlPage*PG, (ctrlPage+1)*PG);
-  const prev = data.filter(r => r.ETAPA==='Preventivo').length;
-  const urg = data.filter(r => ['Etapa 3','Etapa 4','Etapa 5','Etapa 6','Etapa 7','Etapa 8'].includes(r.ETAPA)).length;
-  const val = data.reduce((s,r) => s+(parseFloat(r.VALOR)||0), 0);
+  const prev = data.filter(r => r['ETAPA']==='Preventivo').length;
+  const urg = data.filter(r => ['Etapa 3','Etapa 4','Etapa 5','Etapa 6','Etapa 7','Etapa 8'].includes(r['ETAPA'])).length;
+  const val = data.reduce((s,r) => s+(parseFloat(r['VALOR'])||0), 0);
   setEl('c-total',fmt(data.length));
-  setEl('c-prev',fmt(data.filter(r=>r.ETAPA==='Preventivo').length));
-  setEl('c-e1',fmt(data.filter(r=>r.ETAPA==='Etapa 1').length));
-  setEl('c-e2',fmt(data.filter(r=>r.ETAPA==='Etapa 2').length));
-  setEl('c-e3',fmt(data.filter(r=>r.ETAPA==='Etapa 3').length));
-  setEl('c-e4',fmt(data.filter(r=>r.ETAPA==='Etapa 4').length));
-  setEl('c-e5',fmt(data.filter(r=>r.ETAPA==='Etapa 5').length));
-  setEl('c-e6',fmt(data.filter(r=>r.ETAPA==='Etapa 6').length));
-  setEl('c-e7',fmt(data.filter(r=>r.ETAPA==='Etapa 7').length));
-  setEl('c-e8',fmt(data.filter(r=>r.ETAPA==='Etapa 8').length));
+  setEl('c-prev',fmt(data.filter(r=>r['ETAPA']==='Preventivo').length));
+  setEl('c-e1',fmt(data.filter(r=>r['ETAPA']==='Etapa 1').length));
+  setEl('c-e2',fmt(data.filter(r=>r['ETAPA']==='Etapa 2').length));
+  setEl('c-e3',fmt(data.filter(r=>r['ETAPA']==='Etapa 3').length));
+  setEl('c-e4',fmt(data.filter(r=>r['ETAPA']==='Etapa 4').length));
+  setEl('c-e5',fmt(data.filter(r=>r['ETAPA']==='Etapa 5').length));
+  setEl('c-e6',fmt(data.filter(r=>r['ETAPA']==='Etapa 6').length));
+  setEl('c-e7',fmt(data.filter(r=>r['ETAPA']==='Etapa 7').length));
+  setEl('c-e8',fmt(data.filter(r=>r['ETAPA']==='Etapa 8').length));
   setEl('c-valor',fmtBRL(val));
   const tbody = document.getElementById('tbody-controle');
   if (!page.length) {
@@ -1071,22 +1074,22 @@ function renderControle() {
     return;
   }
   tbody.innerHTML = page.map(r => {
-    const portCls = r.PORTABILIDADE==='Portabilidade Concluida' ? 'pill-green' : 'pill-red';
-    const portLabel = r.PORTABILIDADE==='Portabilidade Concluida' ? 'Concluida' : 'Nao Concluida';
-    const safraDate = parseSafra(r.SAFRA);
+    const portCls = r['PORTABILIDADE']==='Portabilidade Concluida' ? 'pill-green' : 'pill-red';
+    const portLabel = r['PORTABILIDADE']==='Portabilidade Concluida' ? 'Concluida' : 'Nao Concluida';
+    const safraDate = parseSafra(r['SAFRA']);
     const {estorno} = classificarEstorno(r, safraDate);
     return '<tr>' +
-      '<td>' + (r.SAFRA||'') + '</td><td>' + (r.NOME||'') + '</td>' +
-      '<td class="mono">' + (r.CPF||'') + '</td>' +
-      '<td class="mono">' + (r.TELEFONE_PORTADO||'') + '</td>' +
-      '<td class="mono">' + (r.NUMERO_LINHA||'') + '</td>' +
-      '<td>' + (r.FATURA||'') + '</td>' +
-      '<td class="mono">' + fmtBRL(r.VALOR) + '</td>' +
-      '<td>' + fmtData(r.VENCIMENTO) + '</td>' +
-      '<td>' + (r.DIAS_ATRASO||'') + '</td>' +
+      '<td>' + (r['SAFRA']||'') + '</td><td>' + (r['NOME']||'') + '</td>' +
+      '<td class="mono">' + (r['CPF']||'') + '</td>' +
+      '<td class="mono">' + (r['NUMERO PORTADO']||'') + '</td>' +
+      '<td class="mono">' + (r['NUMERO LINHA']||'') + '</td>' +
+      '<td>' + (r['FATURA']||'') + '</td>' +
+      '<td class="mono">' + fmtBRL(r['VALOR']) + '</td>' +
+      '<td>' + fmtData(r['VENCIMENTO']) + '</td>' +
+      '<td>' + (r['DIAS ATRASO']||'') + '</td>' +
       '<td><span class="pill ' + portCls + '">' + portLabel + '</span></td>' +
-      '<td>' + (r.EQUIPE||'') + '</td>' +
-      '<td>' + (r.ETAPA ? '<span style="color:' + (ETAPA_CORES[r.ETAPA]||'#111') + ';font-weight:600">' + r.ETAPA + '</span>' : '') + '</td>' +
+      '<td>' + (r['EQUIPE']||'') + '</td>' +
+      '<td>' + (r['ETAPA'] ? '<span style="color:' + (ETAPA_CORES[r['ETAPA']]||'#111') + ';font-weight:600">' + r['ETAPA'] + '</span>' : '') + '</td>' +
       '</tr>';
   }).join('');
   const tot=data.length, ini=ctrlPage*PG+1, fim=Math.min((ctrlPage+1)*PG,tot);
@@ -1101,15 +1104,15 @@ function renderEquipes() {
   const safraSel = (document.getElementById('filt-equipe-safra')||{}).value || '';
   const safraDate = parseSafra(safraSel);
   const data = dadosControle.filter(r => {
-    if (safraSel && r.SAFRA!==safraSel) return false;
+    if (safraSel && r['SAFRA']!==safraSel) return false;
     return classificarEstorno(r, safraDate).estorno;
   });
   const equipes = {};
   data.forEach(r => {
-    const eq = r.EQUIPE||'(sem equipe)';
+    const eq = r['EQUIPE']||'(sem equipe)';
     if (!equipes[eq]) equipes[eq] = {clientes:0, valor:0};
     equipes[eq].clientes++;
-    equipes[eq].valor += (parseFloat(r.VALOR)||0);
+    equipes[eq].valor += (parseFloat(r['VALOR'])||0);
   });
   const lista = Object.entries(equipes).sort((a,b) => b[1].clientes-a[1].clientes);
   const totalCli = lista.reduce((s,[,v]) => s+v.clientes, 0)||1;
@@ -1133,11 +1136,11 @@ function exportarEquipes() {
   const safraSel = (document.getElementById('filt-equipe-safra')||{}).value||'';
   const safraDate = parseSafra(safraSel);
   const data = dadosControle.filter(r => {
-    if (safraSel && r.SAFRA!==safraSel) return false;
+    if (safraSel && r['SAFRA']!==safraSel) return false;
     return classificarEstorno(r, safraDate).estorno;
   });
   const eq = {};
-  data.forEach(r => { const e=r.EQUIPE||'sem equipe'; if(!eq[e])eq[e]={c:0,v:0}; eq[e].c++; eq[e].v+=(parseFloat(r.VALOR)||0); });
+  data.forEach(r => { const e=r['EQUIPE']||'sem equipe'; if(!eq[e])eq[e]={c:0,v:0}; eq[e].c++; eq[e].v+=(parseFloat(r['VALOR'])||0); });
   const rows = Object.entries(eq).sort((a,b)=>b[1].c-a[1].c);
   const csv = ['Equipe;Inadimplentes;Valor Total;Ticket Medio', ...rows.map(([e,v])=>e+';'+v.c+';'+v.v.toFixed(2)+';'+(v.v/v.c).toFixed(2))].join('\n');
   download('\ufeff'+csv, 'equipes_'+(safraSel||'todas')+'.csv','text/csv');
@@ -1145,10 +1148,10 @@ function exportarEquipes() {
 
 // RESUMO
 function renderResumo() {
-  const safras = [...new Set(dadosControle.map(r=>r.SAFRA).filter(Boolean))].sort();
+  const safras = [...new Set(dadosControle.map(r=>r['SAFRA']).filter(Boolean))].sort();
   const funil = document.getElementById('funil-row');
   const ec = {};
-  ETAPA_ORDER.forEach(e => { ec[e]=dadosControle.filter(r=>r.ETAPA===e).length; });
+  ETAPA_ORDER.forEach(e => { ec[e]=dadosControle.filter(r=>r['ETAPA']===e).length; });
   if (funil) funil.innerHTML = ETAPA_ORDER.map(et =>
     '<div class="funil-card" style="border-top-color:'+ETAPA_CORES[et]+'">' +
     '<div class="fl">'+et+'</div><div class="fv" style="color:'+ETAPA_CORES[et]+'">'+fmt(ec[et])+'</div></div>'
@@ -1164,7 +1167,7 @@ function renderResumo() {
       '<div class="card blue"><div class="card-accent"></div><div class="card-label">Gross</div><div class="card-value">'+fmt(res.gross)+'</div><div class="card-sub">Ativos: '+fmt(res.ativos)+' Canc: '+fmt(res.cancelados)+'</div></div>' +
       '<div class="card red"><div class="card-accent"></div><div class="card-label">% Estorno Tratado</div><div class="card-value" style="color:'+pctCor+'">'+res.pctEstorno+'%</div><div class="card-sub">'+fmt(res.estornoTratado)+' clientes</div></div>' +
       '<div class="card yellow"><div class="card-accent"></div><div class="card-label">Meta 38%</div><div class="card-value">'+fmt(res.metaEstorno)+'</div></div>' +
-      '<div class="card green"><div class="card-accent"></div><div class="card-label">Baixas</div><div class="card-value">'+fmt(dadosHistorico.filter(r=>r.SAFRA===safra).length)+'</div></div>' +
+      '<div class="card green"><div class="card-accent"></div><div class="card-label">Baixas</div><div class="card-value">'+fmt(dadosHistorico.filter(r=>r['SAFRA']===safra).length)+'</div></div>' +
       '<div class="card purple"><div class="card-accent"></div><div class="card-label">Reducao Necessaria</div><div class="card-value">'+fmt(res.reducao)+'</div></div>' +
       '<div class="card blue"><div class="card-accent"></div><div class="card-label">A Cobrar</div><div class="card-value">'+fmt(res.cobrar)+'</div></div>' +
       '</div><div class="divider"></div></div>';
@@ -1175,20 +1178,20 @@ function renderResumo() {
 function renderEnviosDia() {
   const hoje_d = new Date(); hoje_d.setHours(0,0,0,0);
   const elegiveis = dadosControle.filter(r => {
-    if (!r.ETAPA || r.STATUS_ACESSO!=='Ativo' || (r.STATUS_FATURA||'').toLowerCase()!=='aberta') return false;
-    if (!r.ULTIMO_ENVIO) return true;
-    const ult = new Date(r.ULTIMO_ENVIO); ult.setHours(0,0,0,0);
+    if (!r['ETAPA'] || r['STATUS ACESSO']!=='Ativo' || (r['STATUS PAGAMENTO']||'').toLowerCase()!=='aberta') return false;
+    if (!r['ULTIMO ENVIO']) return true;
+    const ult = new Date(r['ULTIMO ENVIO']); ult.setHours(0,0,0,0);
     return (hoje_d-ult)/86400000 >= INTERVALO_ENVIO;
   });
-  const prev = elegiveis.filter(r=>r.ETAPA==='Preventivo').length;
+  const prev = elegiveis.filter(r=>r['ETAPA']==='Preventivo').length;
   setEl('e-total',fmt(elegiveis.length)); setEl('e-prev',fmt(prev)); setEl('e-atr',fmt(elegiveis.length-prev));
   const div = document.getElementById('envios-por-etapa');
   if (!elegiveis.length) {
     div.innerHTML='<div class="empty-state"><p>Todos os envios concluidos ou aguardando '+INTERVALO_ENVIO+' dias.</p></div>';
     return;
   }
-  div.innerHTML = ETAPA_ORDER.filter(et=>elegiveis.some(r=>r.ETAPA===et)).map(etapa => {
-    const list = elegiveis.filter(r=>r.ETAPA===etapa);
+  div.innerHTML = ETAPA_ORDER.filter(et=>elegiveis.some(r=>r['ETAPA']===et)).map(etapa => {
+    const list = elegiveis.filter(r=>r['ETAPA']===etapa);
     const cor = ETAPA_CORES[etapa];
     return '<div style="margin-bottom:1rem">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">' +
@@ -1203,9 +1206,9 @@ function renderEnviosDia() {
         '<th>Nome</th><th>Nr Portado</th><th>Fatura</th><th>Valor</th><th>Venc.</th><th>Dias</th><th>Port.</th><th>Equipe</th><th>Ultimo Envio</th>' +
       '</tr></thead><tbody>' +
       list.slice(0,50).map(r =>
-        '<tr><td>'+(r.NOME||'')+'</td><td class="mono">'+(r.TELEFONE_PORTADO||'')+'</td><td>'+(r.FATURA||'')+'</td><td class="mono">'+fmtBRL(r.VALOR)+'</td><td>'+fmtData(r.VENCIMENTO)+'</td><td>'+(r.DIAS_ATRASO||'')+'</td>' +
-        '<td><span class="pill '+(r.PORTABILIDADE==='Portabilidade Concluida'?'pill-green':'pill-red')+'">'+(r.PORTABILIDADE==='Portabilidade Concluida'?'Port.':'N/Port.')+'</span></td>' +
-        '<td>'+(r.EQUIPE||'')+'</td><td>'+fmtData(r.ULTIMO_ENVIO)+'</td></tr>'
+        '<tr><td>'+(r['NOME']||'')+'</td><td class="mono">'+(r['NUMERO PORTADO']||'')+'</td><td>'+(r['FATURA']||'')+'</td><td class="mono">'+fmtBRL(r['VALOR'])+'</td><td>'+fmtData(r['VENCIMENTO'])+'</td><td>'+(r['DIAS ATRASO']||'')+'</td>' +
+        '<td><span class="pill '+(r['PORTABILIDADE']==='Portabilidade Concluida'?'pill-green':'pill-red')+'">'+(r['PORTABILIDADE']==='Portabilidade Concluida'?'Port.':'N/Port.')+'</span></td>' +
+        '<td>'+(r['EQUIPE']||'')+'</td><td>'+fmtData(r['ULTIMO ENVIO'])+'</td></tr>'
       ).join('') +
       (list.length>50?'<tr><td colspan="9" style="text-align:center;color:var(--text-light);font-size:.72rem">... e mais '+(list.length-50)+' registros</td></tr>':'') +
       '</tbody></table></div></div><div class="divider"></div>';
@@ -1218,9 +1221,9 @@ async function dispararEtapa(etapa) {
   const hoje_d = new Date(); hoje_d.setHours(0,0,0,0);
   const hoje_str = new Date().toISOString().slice(0,10);
   const elegiveis = dadosControle.filter(r => {
-    if (r.ETAPA!==etapa||r.STATUS_ACESSO!=='Ativo'||(r.STATUS_FATURA||'').toLowerCase()!=='aberta') return false;
-    if (!r.ULTIMO_ENVIO) return true;
-    const ult = new Date(r.ULTIMO_ENVIO); ult.setHours(0,0,0,0);
+    if (r['ETAPA']!==etapa||r['STATUS ACESSO']!=='Ativo'||(r['STATUS PAGAMENTO']||'').toLowerCase()!=='aberta') return false;
+    if (!r['ULTIMO ENVIO']) return true;
+    const ult = new Date(r['ULTIMO ENVIO']); ult.setHours(0,0,0,0);
     return (hoje_d-ult)/86400000 >= INTERVALO_ENVIO;
   });
   if (!elegiveis.length) { alert('Nenhum cliente elegivel para '+etapa+' (aguardar '+INTERVALO_ENVIO+' dias).'); return; }
@@ -1231,21 +1234,21 @@ async function dispararEtapa(etapa) {
       etapa,
       safra: elegiveis[0].SAFRA||'',
       clientes: elegiveis.map(r => ({
-        cpf:r.CPF, nome:r.NOME, telefone:r.TELEFONE_PORTADO,
-        numero_linha:r.NUMERO_LINHA, fatura:r.FATURA,
-        valor:r.VALOR, vencimento:r.VENCIMENTO,
-        dias_atraso:r.DIAS_ATRASO, portabilidade:r.PORTABILIDADE,
-        equipe:r.EQUIPE, etapa:r.ETAPA
+        cpf:r['CPF'], nome:r['NOME'], telefone:r['NUMERO PORTADO'],
+        numero_linha:r['NUMERO LINHA'], fatura:r['FATURA'],
+        valor:r['VALOR'], vencimento:r['VENCIMENTO'],
+        dias_atraso:r['DIAS ATRASO'], portabilidade:r['PORTABILIDADE'],
+        equipe:r['EQUIPE'], etapa:r['ETAPA']
       }))
     };
     const resp = await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     if (resp.ok) {
       alert('Disparo enviado! '+fmt(elegiveis.length)+' clientes para '+etapa);
-      const ids = new Set(elegiveis.map(r=>r.NUMERO_ACESSO||r.TELEFONE_PORTADO));
-      dadosControle.forEach(r => { if(ids.has(r.NUMERO_ACESSO||r.TELEFONE_PORTADO)) r.ULTIMO_ENVIO=hoje_str; });
+      const ids = new Set(elegiveis.map(r=>r['NUMERO DE ACESSO']||r['NUMERO PORTADO']));
+      dadosControle.forEach(r => { if(ids.has(r['NUMERO DE ACESSO']||r['NUMERO PORTADO'])) r['ULTIMO ENVIO']=hoje_str; });
       if (sb) {
         for (const r of elegiveis) {
-          try { await sb.from('controle_envio').update({ULTIMO_ENVIO:hoje_str}).eq('SAFRA',r.SAFRA).eq('NUMERO_ACESSO',r.NUMERO_ACESSO||r.TELEFONE_PORTADO); } catch(e) {}
+          try { await sb.from('controle_envio').update({'ULTIMO ENVIO':hoje_str}).eq('SAFRA',r['SAFRA']).eq('NUMERO DE ACESSO',r['NUMERO DE ACESSO']||r['NUMERO PORTADO']); } catch(e) {}
         }
       }
     } else { alert('Erro ao enviar para n8n: '+resp.status); }
@@ -1344,20 +1347,24 @@ function exportarRespostas(){const data=getRespostasFiltradas();if(!data.length)
 // HISTORICO
 async function carregarHistorico(){
   if(!sb)return;
-  const{data}=await sb.from('historico_pagamentos').select('*').order('created_at',{ascending:false}).limit(2000);
+  try{
+  const{data,error}=await sb.from('historico_pagamentos').select('*').order('created_at',{ascending:false}).limit(2000);
+  if(error){console.warn('historico_pagamentos:',error.message);dadosHistorico=[];return;}
   dadosHistorico=data||[];
-  const val=dadosHistorico.reduce((s,r)=>s+(parseFloat(r.VALOR)||0),0);
+  const val=dadosHistorico.reduce((s,r)=>s+(parseFloat(r['VALOR'])||0),0);
   const ec={};dadosHistorico.forEach(r=>{const e=r['ETAPA NO PAGAMENTO']||'';ec[e]=(ec[e]||0)+1;});
   const melhor=Object.entries(ec).sort((a,b)=>b[1]-a[1])[0]?.[0]||'--';
   setEl('h-total',fmt(dadosHistorico.length));setEl('h-valor',fmtBRL(val));setEl('h-etapa',melhor);
   const tbody=document.getElementById('tbody-historico');
   if(!dadosHistorico.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><p>Nenhum pagamento</p></div></td></tr>';return;}
-  tbody.innerHTML=dadosHistorico.slice(0,200).map(r=>'<tr><td>'+(r.SAFRA||'')+'</td><td class="mono">'+(r.CPF||'')+'</td><td>'+(r.NOME||'')+'</td><td class="mono">'+(r.NUMERO_PORTADO||'')+'</td><td>'+(r.FATURA||'')+'</td><td class="mono">'+fmtBRL(r.VALOR)+'</td><td>'+fmtData(r.VENCIMENTO)+'</td><td><span style="color:'+(ETAPA_CORES[r['ETAPA NO PAGAMENTO']]||'#111')+'">'+(r['ETAPA NO PAGAMENTO']||'')+'</span></td><td>'+fmtData(r['DATA PAGAMENTO']||r.DATA_PAGAMENTO)+'</td></tr>').join('');
+  tbody.innerHTML=dadosHistorico.slice(0,200).map(r=>'<tr><td>'+(r['SAFRA']||'')+'</td><td class="mono">'+(r['CPF']||'')+'</td><td>'+(r['NOME']||'')+'</td><td class="mono">'+(r.NUMERO_PORTADO||'')+'</td><td>'+(r['FATURA']||'')+'</td><td class="mono">'+fmtBRL(r['VALOR'])+'</td><td>'+fmtData(r['VENCIMENTO'])+'</td><td><span style="color:'+(ETAPA_CORES[r['ETAPA NO PAGAMENTO']]||'#111')+'">'+(r['ETAPA NO PAGAMENTO']||'')+'</span></td><td>'+fmtData(r['DATA PAGAMENTO']||r.DATA_PAGAMENTO)+'</td></tr>').join('');
+  }catch(e){console.warn('historico_pagamentos erro:',e.message);dadosHistorico=[];}
 }
 async function carregarHistEnvios(){
   if(!sb)return;
   let todos=[],offset=0;
-  while(true){const{data}=await sb.from('historico_envios').select('*').range(offset,offset+999);if(!data||!data.length)break;todos.push(...data);if(data.length<1000)break;offset+=1000;}
+  try{
+  while(true){const{data,error}=await sb.from('historico_envios').select('*').range(offset,offset+999);if(error||!data||!data.length)break;todos.push(...data);if(data.length<1000)break;offset+=1000;}
   dadosHistEnvios=todos;
   const comMsg=todos.filter(r=>ETAPA_ORDER.some(e=>r[e]||r[e.replace(' ','_')])).length;
   const ec={};ETAPA_ORDER.forEach(e=>{ec[e]=todos.filter(r=>r[e]||r[e.replace(' ','_')]).length;});
@@ -1365,7 +1372,8 @@ async function carregarHistEnvios(){
   setEl('he-total',fmt(todos.length));setEl('he-rec',fmt(comMsg));setEl('he-etapa',melhor);
   const tbody=document.getElementById('tbody-hist-envios');
   if(!todos.length){tbody.innerHTML='<tr><td colspan="15"><div class="empty-state"><p>Nenhum envio</p></div></td></tr>';return;}
-  tbody.innerHTML=todos.slice(0,200).map(r=>'<tr><td>'+(r.SAFRA||'')+'</td><td>'+(r.NOME||'')+'</td><td class="mono">'+(r.NUMERO_PORTADO||'')+'</td><td class="mono">'+(r.CPF||'')+'</td><td>'+(r.PORTABILIDADE||'')+'</td><td>'+(r.EQUIPE||'')+'</td>'+ETAPA_ORDER.map(e=>'<td style="color:'+(r[e]?'#16A34A':'#9CA3AF')+'">'+(r[e]?fmtData(r[e]):'--')+'</td>').join('')+'</tr>').join('');
+  tbody.innerHTML=todos.slice(0,200).map(r=>'<tr><td>'+(r['SAFRA']||'')+'</td><td>'+(r['NOME']||'')+'</td><td class="mono">'+(r.NUMERO_PORTADO||'')+'</td><td class="mono">'+(r['CPF']||'')+'</td><td>'+(r['PORTABILIDADE']||'')+'</td><td>'+(r['EQUIPE']||'')+'</td>'+ETAPA_ORDER.map(e=>'<td style="color:'+(r[e]?'#16A34A':'#9CA3AF')+'">'+(r[e]?fmtData(r[e]):'--')+'</td>').join('')+'</tr>').join('');
+  }catch(e){console.warn('historico_envios erro:',e.message);dadosHistEnvios=[];}
 }
 
 // UPLOAD
@@ -1426,9 +1434,9 @@ async function processarArquivo(file){
       const equipe=matched?matched.equipe:'';
       const etapa=determinarEtapa(diasAtraso,portabilidade,statusAcesso,fatStatus);
       const vencISO=fatVenc?converteData(fatVenc):null;
-      const tmpCliente={STATUS_ACESSO:statusAcesso,STATUS_FATURA:fatStatus,VENCIMENTO:vencISO};
+      const tmpCliente={'STATUS ACESSO':statusAcesso,'STATUS PAGAMENTO':fatStatus,VENCIMENTO:vencISO};
       const{estorno,tipo:tipoEstorno}=classificarEstorno(tmpCliente,safraDate);
-      return{SAFRA:safra,CPF:cpf,NOME:nomeCon,NUMERO_ACESSO:numAcesso,TELEFONE_PORTADO:numAcesso,NUMERO_LINHA:numAcesso,STATUS_ACESSO:statusAcesso,FATURA:fatNum,VALOR:fatVal||null,VENCIMENTO:vencISO,DIAS_ATRASO:diasAtraso,STATUS_FATURA:fatStatus,LINHA_DIGITAVEL:fatLinha,PORTABILIDADE:portabilidade,EQUIPE:equipe,ETAPA:etapa,ESTORNO:estorno,TIPO_ESTORNO:tipoEstorno};
+      return{SAFRA:safra,CPF:cpf,NOME:nomeCon,'NUMERO DE ACESSO':numAcesso,'NUMERO PORTADO':numAcesso,'NUMERO LINHA':numAcesso,'STATUS ACESSO':statusAcesso,FATURA:fatNum,VALOR:fatVal||null,VENCIMENTO:vencISO,'DIAS ATRASO':diasAtraso,'STATUS PAGAMENTO':fatStatus,'LINHA DIGITAVEL':fatLinha,PORTABILIDADE:portabilidade,EQUIPE:equipe,ETAPA:etapa,ESTORNO:estorno,TIPO_ESTORNO:tipoEstorno};
     });
     setUploadProgress(true,'Enviando para Supabase...',60);
     let inseridos=0,atualizados=0,erros=0;
@@ -1436,22 +1444,22 @@ async function processarArquivo(file){
       const batch=registros.slice(i,i+500);
       setUploadProgress(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registros.length/500)+'...',60+(i/registros.length*35));
       if(modo==='nova'){
-        const{error}=await sb.from('controle_envio').upsert(batch,{onConflict:'SAFRA,NUMERO_ACESSO',ignoreDuplicates:false});
+        const{error}=await sb.from('controle_envio').upsert(batch,{onConflict:'SAFRA,NUMERO DE ACESSO',ignoreDuplicates:false});
         if(error){erros+=batch.length;console.error(error);}else inseridos+=batch.length;
       }else{
         for(const reg of batch){
-          const{error}=await sb.from('controle_envio').update({STATUS_ACESSO:reg.STATUS_ACESSO,VALOR:reg.VALOR,VENCIMENTO:reg.VENCIMENTO,DIAS_ATRASO:reg.DIAS_ATRASO,STATUS_FATURA:reg.STATUS_FATURA,ETAPA:reg.ETAPA,ESTORNO:reg.ESTORNO,TIPO_ESTORNO:reg.TIPO_ESTORNO}).eq('SAFRA',safra).eq('NUMERO_ACESSO',reg.NUMERO_ACESSO);
+          const{error}=await sb.from('controle_envio').update({'STATUS ACESSO':reg.STATUS_ACESSO,VALOR:reg.VALOR,VENCIMENTO:reg.VENCIMENTO,'DIAS ATRASO':reg.DIAS_ATRASO,'STATUS PAGAMENTO':reg.STATUS_FATURA,ETAPA:reg.ETAPA,ESTORNO:reg.ESTORNO,TIPO_ESTORNO:reg.TIPO_ESTORNO}).eq('SAFRA',safra).eq('NUMERO DE ACESSO',reg.NUMERO_ACESSO);
           if(error)erros++;else atualizados++;
         }
         // Identificar pagamentos automaticamente
-        const pagamentos=registros.filter(r=>(r.STATUS_FATURA||'').toLowerCase()==='paga');
+        const pagamentos=registros.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='paga');
         for(const p of pagamentos){
-          await sb.from('historico_pagamentos').upsert({SAFRA:p.SAFRA,CPF:p.CPF,NOME:p.NOME,NUMERO_PORTADO:p.TELEFONE_PORTADO,FATURA:p.FATURA,VALOR:p.VALOR,VENCIMENTO:p.VENCIMENTO,DATA_PAGAMENTO:new Date().toISOString().slice(0,10)},{onConflict:'SAFRA,NUMERO_PORTADO,FATURA',ignoreDuplicates:true});
+          try{await sb.from('historico_pagamentos').upsert({'SAFRA':p['SAFRA'],'CPF':p['CPF'],'NOME':p['NOME'],'NUMERO PORTADO':p['NUMERO PORTADO'],'FATURA':p['FATURA'],'VALOR':p['VALOR'],'VENCIMENTO':p['VENCIMENTO'],'DATA PAGAMENTO':new Date().toISOString().slice(0,10)},{onConflict:'SAFRA,NUMERO PORTADO,FATURA',ignoreDuplicates:true});}catch(e){}
         }
       }
     }
     // Salvar snapshot do dia
-    const totalEstorno=registros.filter(r=>r.ESTORNO).length;
+    const totalEstorno=registros.filter(r=>r['ESTORNO']).length;
     const pctSnap=registros.length>0?(totalEstorno/registros.length*100).toFixed(1):'0';
     await salvarSnapshot(safra,pctSnap,totalEstorno,registros.length);
     await sb.from('historico_uploads').insert({safra,modo,total_registros:registros.length,inseridos:modo==='nova'?inseridos:0,atualizados:modo==='atualizar'?atualizados:0,erros,status:erros===0?'Sucesso':'Parcial',created_at:new Date().toISOString()});
@@ -1485,13 +1493,13 @@ function determinarEtapa(dias,portabilidade,statusAcesso,statusFatura){
 async function prepararDownload(){
   if(!sb){alert('Conecte ao Supabase primeiro.');return;}
   const safra=document.getElementById('sel-safra-download').value;
-  let query=sb.from('controle_envio').select('*').eq('STATUS_ACESSO','Ativo').eq('STATUS_FATURA','Aberta');
+  let query=sb.from('controle_envio').select('*').eq('STATUS ACESSO','Ativo').eq('STATUS PAGAMENTO','Aberta');
   if(safra)query=query.eq('SAFRA',safra);
   const{data,error}=await query;
   if(error||!data){alert('Erro ao buscar dados.');return;}
   document.getElementById('download-stats').style.display='block';
   document.getElementById('download-count').textContent=fmt(data.length);
-  const cols=['SAFRA','CPF','NOME','NUMERO_ACESSO','TELEFONE_PORTADO','STATUS_ACESSO','FATURA','VALOR','VENCIMENTO','DIAS_ATRASO','STATUS_FATURA','PORTABILIDADE','EQUIPE','ETAPA','ULTIMO_ENVIO'];
+  const cols=['SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','STATUS ACESSO','FATURA','VALOR','VENCIMENTO','DIAS ATRASO','STATUS PAGAMENTO','PORTABILIDADE','EQUIPE','ETAPA','ULTIMO ENVIO'];
   const csv=[cols.join(';'),...data.map(r=>cols.map(c=>r[c]||'').join(';'))].join('\n');
   download('\ufeff'+csv,'consulta_rpa_'+(safra||'todas')+'_'+hoje()+'.csv','text/csv');
 }
@@ -1499,19 +1507,19 @@ async function prepararDownload(){
 // DASHBOARD
 function atualizarDashboard(){
   const data=dadosControle;
-  const ativo=data.filter(r=>r.STATUS_ACESSO==='Ativo').length;
-  const canc=data.filter(r=>r.STATUS_ACESSO!=='Ativo').length;
-  const aberta=data.filter(r=>(r.STATUS_FATURA||'').toLowerCase()==='aberta').length;
-  const paga=data.filter(r=>r.STATUS_FATURA&&(r.STATUS_FATURA||'').toLowerCase()!=='aberta').length;
-  const val=data.filter(r=>(r.STATUS_FATURA||'').toLowerCase()==='aberta').reduce((s,r)=>s+(parseFloat(r.VALOR)||0),0);
-  const portOk=data.filter(r=>r.PORTABILIDADE==='Portabilidade Concluida').length;
+  const ativo=data.filter(r=>r['STATUS ACESSO']==='Ativo').length;
+  const canc=data.filter(r=>r['STATUS ACESSO']!=='Ativo').length;
+  const aberta=data.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='aberta').length;
+  const paga=data.filter(r=>r['STATUS PAGAMENTO']&&(r['STATUS PAGAMENTO']||'').toLowerCase()!=='aberta').length;
+  const val=data.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='aberta').reduce((s,r)=>s+(parseFloat(r['VALOR'])||0),0);
+  const portOk=data.filter(r=>r['PORTABILIDADE']==='Portabilidade Concluida').length;
   setEl('d-total',fmt(data.length));setEl('d-ativo',fmt(ativo));setEl('d-canc',fmt(canc));
   setEl('d-aberta',fmt(aberta));setEl('d-paga',fmt(paga));setEl('d-valor',fmtBRL(val));
   setEl('d-port-ok',fmt(portOk));setEl('d-port-nok',fmt(data.length-portOk));
   setEl('d-port-pct',data.length>0?(portOk/data.length*100).toFixed(1)+'%':'--');
   setEl('d-pag',fmt(dadosHistorico.length));
   // Estorno geral
-  const safras=[...new Set(data.map(r=>r.SAFRA).filter(Boolean))];
+  const safras=[...new Set(data.map(r=>r['SAFRA']).filter(Boolean))];
   let totalEstorno=0;
   safras.forEach(s=>{const res=calcularEstornoPorSafra(s);totalEstorno+=res.estornoTratado;});
   setEl('d-estorno',data.length>0?(totalEstorno/data.length*100).toFixed(1)+'%':'--');
@@ -1522,19 +1530,19 @@ function atualizarDashboard(){
 function renderGraficoVenc(){
   if(typeof Plotly==='undefined')return;
   const hoje=new Date();hoje.setHours(0,0,0,0);
-  const cnt={};dadosControle.forEach(r=>{const d=(r.VENCIMENTO||'').slice(0,10);if(!d)return;cnt[d]=(cnt[d]||0)+1;});
+  const cnt={};dadosControle.forEach(r=>{const d=(r['VENCIMENTO']||'').slice(0,10);if(!d)return;cnt[d]=(cnt[d]||0)+1;});
   const dias=Object.keys(cnt).sort();if(!dias.length)return;
   Plotly.newPlot('chart-venc',[{x:dias,y:dias.map(d=>cnt[d]),type:'bar',marker:{color:dias.map(d=>{const dd=new Date(d);dd.setHours(0,0,0,0);return dd<hoje?'#DC2626':dd.getTime()===hoje.getTime()?'#D97706':'#2563EB';})}}],{paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'Inter',color:'#6B7280'},margin:{l:30,r:10,t:10,b:30},height:210,xaxis:{gridcolor:'#F3F4F6'},yaxis:{gridcolor:'#F3F4F6'},showlegend:false},{displayModeBar:false});
 }
 function renderGraficoPort(){
   if(typeof Plotly==='undefined')return;
-  const cnt={};dadosControle.forEach(r=>{const p=r.PORTABILIDADE||'N/D';cnt[p]=(cnt[p]||0)+1;});
+  const cnt={};dadosControle.forEach(r=>{const p=r['PORTABILIDADE']||'N/D';cnt[p]=(cnt[p]||0)+1;});
   if(!Object.keys(cnt).length)return;
   Plotly.newPlot('chart-port',[{labels:Object.keys(cnt),values:Object.values(cnt),type:'pie',hole:0.6,marker:{colors:['#16A34A','#DC2626','#D97706','#9CA3AF']},textinfo:'percent'}],{paper_bgcolor:'#fff',font:{family:'Inter',color:'#6B7280'},margin:{l:0,r:0,t:0,b:0},height:210,legend:{font:{size:10}}},{displayModeBar:false});
 }
 function exportarWpp(){
   const data=getDadosFiltrados();
-  const cols=['SAFRA','NOME','CPF','TELEFONE_PORTADO','NUMERO_LINHA','FATURA','VALOR','VENCIMENTO','DIAS_ATRASO','ETAPA','PORTABILIDADE','EQUIPE'];
+  const cols=['SAFRA','NOME','CPF','NUMERO PORTADO','NUMERO LINHA','FATURA','VALOR','VENCIMENTO','DIAS ATRASO','ETAPA','PORTABILIDADE','EQUIPE'];
   const csv=[cols.join(';'),...data.map(r=>cols.map(c=>r[c]||'').join(';'))].join('\n');
   download('\ufeff'+csv,'wpp_'+hoje()+'.csv','text/csv');
 }
