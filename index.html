@@ -1116,7 +1116,7 @@ function getDadosFiltrados() {
   return dadosControle.filter(r => {
     if (safra && r['SAFRA'] !== safra) return false;
     if (etapa && r['ETAPA'] !== etapa) return false;
-    if (port === 'Portabilidade Concluida' && r['PORTABILIDADE'] !== 'Portabilidade Concluida') return false;
+    if (port === 'Portabilidade Concluida' && r['PORTABILIDADE'] !== 'Portabilidade Concluida' && r['PORTABILIDADE'] !== 'Concluida') return false;
     if (port === 'nao' && r['PORTABILIDADE'] === 'Portabilidade Concluida') return false;
     return true;
   });
@@ -1145,8 +1145,9 @@ function renderControle() {
     return;
   }
   tbody.innerHTML = page.map(r => {
-    const portCls = r['PORTABILIDADE']==='Portabilidade Concluida' ? 'pill-green' : 'pill-red';
-    const portLabel = r['PORTABILIDADE']==='Portabilidade Concluida' ? 'Concluida' : 'Nao Concluida';
+    const isConcluida = r['PORTABILIDADE']==='Portabilidade Concluida'||r['PORTABILIDADE']==='Concluida';
+    const portCls = isConcluida ? 'pill-green' : 'pill-red';
+    const portLabel = isConcluida ? 'Concluida' : 'Nao Concluida';
     const safraDate = parseSafra(r['SAFRA']);
     const {estorno} = classificarEstorno(r, safraDate);
     return '<tr>' +
@@ -1468,9 +1469,17 @@ async function processarArquivo(file){
     while(true){const{data}=await sb.from('conectadas').select('TELEFONE_PORTADO,NUMERO_LINHA,PORTABILIDADE,NOME,EQUIPE').range(offset,offset+999);if(!data||!data.length)break;conectadas.push(...data);if(data.length<1000)break;offset+=1000;}
     const mapaPort={};
     conectadas.forEach(c=>{
-      const tel=limpaTel(c.TELEFONE_PORTADO),lin=limpaTel(c.NUMERO_LINHA);
-      const obj={portabilidade:c.PORTABILIDADE||'',nome:c.NOME||'',equipe:c.EQUIPE||''};
-      if(tel)mapaPort[tel]=obj;if(lin)mapaPort[lin]=obj;
+      const tel=limpaTel(c.TELEFONE_PORTADO), lin=limpaTel(c.NUMERO_LINHA);
+      // Normalizar portabilidade para o valor completo da tabela conectadas
+      const port = c.PORTABILIDADE||'';
+      const obj={portabilidade:port, nome:c.NOME||'', equipe:c.EQUIPE||''};
+      if(tel) mapaPort[tel]=obj;
+      if(lin) mapaPort[lin]=obj;
+      // Tambem indexar sem slice(-11) para cobrir numeros com menos digitos
+      const tel9=String(c.TELEFONE_PORTADO||'').replace(/\D/g,'');
+      const lin9=String(c.NUMERO_LINHA||'').replace(/\D/g,'');
+      if(tel9&&!mapaPort[tel9]) mapaPort[tel9]=obj;
+      if(lin9&&!mapaPort[lin9]) mapaPort[lin9]=obj;
     });
     setUploadProgress(true,'Processando...',40);
     const getCol=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
@@ -1499,7 +1508,10 @@ async function processarArquivo(file){
       faturas.sort((a,b)=>a.venc<b.venc?-1:1);
       if(faturas.length>0){const f=faturas[0];fatNum=f.num;fatVal=f.val;fatVenc=f.venc;fatStatus='Aberta';fatLinha=f.linha;diasAtraso=f.dias;}
       else{fatStatus=getCol(row,'1\u00aa fatura - Status da fatura','1\u00aa fatura - Status da fatura')||'Sem fatura';}
-      const matched=mapaPort[numAcesso]||null;
+      // Tentar lookup com 11 digitos e tambem com numero completo
+      const numAcessoFull=String(getCol(row,'Numero de acesso','N\u00famero de acesso','N\u00c3\u00bamer de acesso',
+        'N\u00c3\u00bamer de acesso','NUMERO_ACESSO','')||'').replace(/\D/g,'');
+      const matched=mapaPort[numAcesso]||mapaPort[numAcessoFull]||null;
       const portabilidade=matched?matched.portabilidade:'Portabilidade nao Concluida';
       const nomeCon=matched?matched.nome:'';
       const equipe=matched?matched.equipe:'';
@@ -1588,7 +1600,7 @@ function limpaTel(v){return String(v||'').replace(/\D/g,'').slice(-11);}
 function converteData(v){if(!v)return null;const p=v.split('/');if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return v;}
 function determinarEtapa(dias,portabilidade,statusAcesso,statusFatura){
   if(statusAcesso!=='Ativo'||(statusFatura||'').toLowerCase()!=='aberta')return null;
-  const concluida=portabilidade==='Portabilidade Concluida';
+  const concluida=portabilidade==='Portabilidade Concluida'||portabilidade==='Concluida';
   if(dias<=-2)return'Preventivo';
   if(dias>=0&&dias<=6)return null;
   if(dias>=7&&dias<=10)return'Etapa 1';
@@ -1624,7 +1636,7 @@ function atualizarDashboard(){
   const aberta=data.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='aberta').length;
   const paga=data.filter(r=>r['STATUS PAGAMENTO']&&(r['STATUS PAGAMENTO']||'').toLowerCase()!=='aberta').length;
   const val=data.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='aberta').reduce((s,r)=>s+(parseFloat(r['VALOR'])||0),0);
-  const portOk=data.filter(r=>r['PORTABILIDADE']==='Portabilidade Concluida').length;
+  const portOk=data.filter(r=>r['PORTABILIDADE']==='Portabilidade Concluida'||r['PORTABILIDADE']==='Concluida').length;
   setEl('d-total',fmt(data.length));setEl('d-ativo',fmt(ativo));setEl('d-canc',fmt(canc));
   setEl('d-aberta',fmt(aberta));setEl('d-paga',fmt(paga));setEl('d-valor',fmtBRL(val));
   setEl('d-port-ok',fmt(portOk));setEl('d-port-nok',fmt(data.length-portOk));
