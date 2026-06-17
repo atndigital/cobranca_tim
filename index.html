@@ -205,6 +205,10 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
       <button class="sb-cfg-btn" onclick="abrirModal()">&#x2699;&#xFE0F;</button>
     </div>
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
+    <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v4</span>
+    </div>
   </div>
 </nav>
 
@@ -1775,6 +1779,17 @@ async function processarConectadas(file) {
       };
     }).filter(r=>r.TELEFONE_PORTADO||r.NUMERO_LINHA);
 
+    // Deduplicar por TELEFONE_PORTADO (mesmo arquivo pode ter duplicatas)
+    const seen=new Set();
+    const registrosDedups=registros.filter(r=>{
+      const key=r.TELEFONE_PORTADO||r.NUMERO_LINHA||'';
+      if(!key||seen.has(key))return false;
+      seen.add(key);
+      return true;
+    });
+    const dupCount=registros.length-registrosDedups.length;
+    if(dupCount>0) console.log('Duplicatas removidas do arquivo:',dupCount);
+
     setUploadProgressCon(true,fmt(registros.length)+' validos. Enviando...',35);
 
     if(modo==='substituir'){
@@ -1784,15 +1799,15 @@ async function processarConectadas(file) {
     }
 
     let inseridos=0,erros=0;
-    for(let i=0;i<registros.length;i+=500){
-      const batch=registros.slice(i,i+500);
-      setUploadProgressCon(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registros.length/500)+'...',35+(i/registros.length*60));
+    for(let i=0;i<registrosDedups.length;i+=500){
+      const batch=registrosDedups.slice(i,i+500);
+      setUploadProgressCon(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registrosDedups.length/500)+'...',35+(i/registrosDedups.length*60));
       const {error}=await sb.from('conectadas').upsert(batch,{onConflict:'TELEFONE_PORTADO',ignoreDuplicates:false});
       if(error){erros+=batch.length;console.error('conectadas:',error.message);}else inseridos+=batch.length;
     }
 
     setUploadProgressCon(false,'',100);
-    result.innerHTML='<div class="alert alert-ok">'+fmt(inseridos)+' registros importados'+(erros>0?' - '+erros+' erros':'')+'. GROSS atualizado!</div>';
+    result.innerHTML='<div class="alert alert-ok">'+fmt(inseridos)+' registros importados'+(dupCount>0?' ('+fmt(dupCount)+' duplicatas ignoradas)':' ')+(erros>0?' - '+erros+' erros':'')+'. GROSS atualizado!</div>';
     await carregarGrossPorMes();
   } catch(e){
     setUploadProgressCon(false,'',0);
