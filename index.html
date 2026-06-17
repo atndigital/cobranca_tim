@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v6</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v7</span>
     </div>
   </div>
 </nav>
@@ -754,7 +754,7 @@ function classificarEstorno(cliente, safraDate) {
 function parseSafra(safraStr) {
   if (!safraStr) return null;
   const upper = (safraStr + '').toUpperCase()
-    .replace('MAR\u00c7O','MARCO').replace('\u00c7','C');
+    .replace('MAR\u00c7O','MARCO').replace('\u00c7','C').replace('MAR\u00c3\u0087O','MARCO');
   const nomes = ['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO',
                  'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
   for (let i = 0; i < nomes.length; i++) {
@@ -1451,9 +1451,7 @@ async function processarArquivo(file){
 
     // Verificar duplicidade pela coluna "Data final do processamento" (col AF)
     const getCol=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
-    const getDataProcessamento = (row) => {
-      return getCol(row,'Data final do processamento','Data final do processamento','DATA_FINAL_PROCESSAMENTO')||'';
-    };
+    const getDataProcessamento = (row) => { return row['Data final do processamento']||''; };
     const datasProc = [...new Set(rows.map(r=>getDataProcessamento(r)).filter(Boolean))];
     if(datasProc.length>0 && modo==='nova'){
       // Checar se ja existe no banco com essa data de processamento
@@ -1475,7 +1473,7 @@ async function processarArquivo(file){
     const rowsAntes = rows.length;
     const rowsFiltradas = rows.filter(row=>{
       // Filtro 1: Data da ativacao deve ser no mes/ano da safra
-      const dataAtiv = getCol(row,'Data da ativa\u00e7\u00e3o','Data da ativacao','DATA_ATIVACAO')||'';
+      const dataAtiv = row['Data da ativa\u00c3\u00a7\u00c3\u00a3o']||row['Data da ativacao']||row['DATA_ATIVACAO']||'';
       if(dataAtiv){
         const partsAtiv = dataAtiv.split('/');
         if(partsAtiv.length===3){
@@ -1484,7 +1482,7 @@ async function processarArquivo(file){
         }
       }
       // Filtro 2: Emissao da 1a fatura deve ser >= mes de ativacao
-      const dataEmis = getCol(row,'1\u00aa fatura - Data de emiss\u00e3o','1a fatura - Data de emissao')||'';
+      const dataEmis = row['1\u00c2\u00aa fatura - Data de emiss\u00c3\u00a3o']||row['1a fatura - Data de emissao']||'';
       if(dataEmis&&dataAtiv){
         const partsEmis = dataEmis.split('/');
         const partsAtiv2 = dataAtiv.split('/');
@@ -1542,27 +1540,30 @@ async function processarArquivo(file){
     const safraDate=parseSafra(safra);
     const registros=rows.map(row=>{
       const numAcesso=limpaTel(getCol(row,'Numero de acesso','N\u00c3\u00bamero de acesso','N\u00famero de acesso','NUMERO_ACESSO'));
-      const cpf=(getCol(row,'Cpf','CPF')+'').replace(/\D/g,'');
+      const cpf=String(row['Cpf']||row['CPF']||'').replace(/\D/g,'');
       const statusAcesso=getCol(row,'Status do numero de acesso','Status do n\u00c3\u00bamero de acesso','Status do n\u00famero de acesso','STATUS_ACESSO');
-      // Status das 3 faturas
-      const _gs=(i,campo)=>getCol(row,
-        i+'\u00aa fatura - '+campo,
-        i+'a fatura - '+campo,
-        i+' fatura - '+campo)||'';
-      const fat1status=_gs(1,'Status da fatura').trim();
-      const fat2status=_gs(2,'Status da fatura').trim();
-      const fat3status=_gs(3,'Status da fatura').trim();
+      // Prefixos das faturas como aparecem no CSV latin1
+      const _PREF=['1\u00c2\u00aa','2\u00c2\u00aa','3\u00c2\u00aa'];
+      // _PREF[0] = '1Aa', _PREF[1] = '2Aa', _PREF[2] = '3Aa'
 
-      // Coletar faturas abertas para achar a mais urgente
+      const _gf=(i,suf)=>{ const p=_PREF[i]; return row[p+' fatura - '+suf]||''; };
+
+      const fat1status=(_gf(0,'Status da fatura')||'').trim();
+      const fat2status=(_gf(1,'Status da fatura')||'').trim();
+      const fat3status=(_gf(2,'Status da fatura')||'').trim();
+
+      // Fatura mais urgente = aberta com menor vencimento
       const _faturas=[];
-      [[1,fat1status],[2,fat2status],[3,fat3status]].forEach(([i,st])=>{
+      [0,1,2].forEach(i=>{
+        const st=i===0?fat1status:i===1?fat2status:fat3status;
         if(st.toLowerCase()==='aberta'){
-          const venc=_gs(i,'Data de vencimento')||'';
-          const valStr=_gs(i,'Pre\u00e7o da fatura')||_gs(i,'Preco da fatura')||'0';
-          const val=parseFloat(valStr.replace('R$','').replace(/\./g,'').replace(',','.'))||0;
-          const num=_gs(i,'N\u00famero da fatura')||_gs(i,'Numero da fatura')||'';
-          const dias=parseInt(_gs(i,'Dias de atraso')||'0')||0;
-          const linha=_gs(i,'Linha digit\u00e1vel')||_gs(i,'Linha digitavel')||'';
+          const venc=_gf(i,'Data de vencimento')||'';
+          const valStr=_gf(i,'Pre\u00c3\u00a7o da fatura')||'0';
+          const val=parseFloat((valStr).replace('R$','').replace(/\./g,'').replace(',','.'))||0;
+          const numStr=_gf(i,'N\u00c3\u00bamero da fatura')||'';
+          const num=numStr?parseFloat(numStr)||null:null;
+          const dias=parseInt(_gf(i,'Dias de atraso')||'0')||0;
+          const linha=_gf(i,'Linha digit\u00c3\u00a1vel')||'';
           _faturas.push({num,val,venc,dias,linha});
         }
       });
@@ -1571,8 +1572,8 @@ async function processarArquivo(file){
       let fatNum=null,fatVal=0,fatVenc='',fatStatus='',fatLinha='',diasAtraso=0;
       if(_faturas.length>0){
         const f=_faturas[0];
-        fatNum=f.num?parseFloat(f.num)||null:null;
-        fatVal=f.val;fatVenc=f.venc;fatStatus='Aberta';fatLinha=f.linha;diasAtraso=f.dias;
+        fatNum=f.num; fatVal=f.val; fatVenc=f.venc;
+        fatStatus='Aberta'; fatLinha=f.linha; diasAtraso=f.dias;
       } else {
         fatStatus=fat1status||'Sem fatura';
       }
