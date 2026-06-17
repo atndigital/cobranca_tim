@@ -3,1865 +3,261 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Controle de Faturas - ATN x TIM</title>
+
+<title>Dashboard Faturas ATN x TIM</title>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --bg:#F0F2F5;--page:#FFFFFF;--sidebar:#1A1F2E;--sidebar-hover:#252C3D;--sidebar-active:#2D3650;
-  --border:#E5E7EB;--border-dark:#2A3145;--text:#111827;--text-light:#6B7280;--text-sidebar:#9CA3AF;
-  --tim-blue:#063b88;--tim-red:#eb0028;
-  --green:#16A34A;--green-bg:#DCFCE7;--red:#DC2626;--red-bg:#FEE2E2;
-  --yellow:#D97706;--yellow-bg:#FEF3C7;--blue:#2563EB;--blue-bg:#DBEAFE;
-  --purple:#7C3AED;--purple-bg:#EDE9FE;--gray:#4B5563;--gray-bg:#F3F4F6;
-  --sidebar-w:240px;
+body {
+  font-family: Arial;
+  margin: 0;
+  background: #F4F6F9;
 }
-body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;overflow-x:hidden;}
-#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--sidebar);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow-y:auto;}
-.sb-header{padding:1rem;border-bottom:1px solid var(--border-dark);display:flex;align-items:center;gap:.6rem;}
-.sb-header img.atn{height:32px;}
-.sb-header-text{font-size:.78rem;font-weight:600;color:#E5E7EB;line-height:1.4;}
-.sb-header-sub{font-size:.65rem;color:var(--text-sidebar);}
-.sb-section{padding:.75rem 1rem .2rem;font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#4B5563;}
-.sb-nav{list-style:none;padding:0 .5rem;margin-bottom:.25rem;}
-.sb-nav li a{display:flex;align-items:center;gap:.6rem;padding:.52rem .75rem;border-radius:6px;font-size:.82rem;font-weight:500;color:var(--text-sidebar);cursor:pointer;transition:all .15s;}
-.sb-nav li a:hover{background:var(--sidebar-hover);color:#E5E7EB;}
-.sb-nav li a.active{background:var(--sidebar-active);color:#FFFFFF;font-weight:600;}
-.sb-nav li a .icon{font-size:.9rem;width:1.1rem;text-align:center;opacity:.8;}
-.sb-badge{margin-left:auto;background:var(--tim-red);color:#fff;font-size:.6rem;font-weight:700;padding:1px 6px;border-radius:20px;}
-.sb-divider{height:1px;background:var(--border-dark);margin:.4rem .75rem;}
-.sb-bottom{padding:.75rem 1rem;margin-top:auto;border-top:1px solid var(--border-dark);}
-.sb-status{display:flex;align-items:center;justify-content:space-between;}
-.sb-dot{width:7px;height:7px;border-radius:50%;background:#DC2626;display:inline-block;margin-right:5px;}
-.sb-dot.ok{background:#16A34A;}
-.sb-conn-text{font-size:.72rem;color:var(--text-sidebar);}
-.sb-cfg-btn{background:none;border:1px solid var(--border-dark);color:var(--text-sidebar);border-radius:5px;padding:.2rem .45rem;font-size:.75rem;cursor:pointer;transition:all .15s;}
-.sb-cfg-btn:hover{border-color:#4B5563;color:#E5E7EB;}
-#main{flex:1;display:flex;flex-direction:column;min-width:0;}
-#topbar{background:var(--page);border-bottom:1px solid var(--border);padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
-.topbar-brand{display:flex;align-items:center;gap:.75rem;padding:.25rem 0;}
-.topbar-brand img.tim-logo{height:42px;}
-.topbar-brand-sep{width:1px;height:32px;background:var(--border);}
-.topbar-brand-text{font-size:.82rem;font-weight:700;line-height:1.3;color:var(--text);}
-.topbar-brand-sub{font-size:.62rem;color:var(--text-light);}
-.topbar-right{display:flex;align-items:center;gap:.7rem;}
-.topbar-date{font-size:.73rem;color:var(--text-light);}
-.conn-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:.68rem;font-weight:600;}
-.conn-badge.ok{background:var(--green-bg);color:var(--green);}
-.conn-badge.err{background:var(--red-bg);color:var(--red);}
-#content{padding:1.4rem 1.6rem;flex:1;}
-#banner-disconnected{display:none;background:var(--red-bg);border:2px solid var(--red);border-radius:10px;padding:1.5rem 2rem;margin-bottom:1.5rem;text-align:center;}
-#banner-disconnected.show{display:block;}
-#banner-disconnected h2{color:var(--red);font-size:1.1rem;margin-bottom:.4rem;}
-#banner-disconnected p{color:#7F1D1D;font-size:.85rem;margin-bottom:.8rem;}
-.tab-panel{display:none;}
-.tab-panel.active{display:block;animation:fadeIn .18s;}
-@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
-.cards-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.75rem;margin-bottom:1rem;}
-.card{background:var(--page);border:1px solid var(--border);border-radius:10px;padding:.9rem 1rem;position:relative;}
-.card-icon{font-size:1.5rem;margin-bottom:.35rem;}
-.card-label{font-size:.65rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text-light);margin-bottom:.2rem;}
-.card-value{font-size:1.7rem;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1.1;}
-.card-sub{font-size:.7rem;color:var(--text-light);margin-top:.2rem;}
-.card.blue .card-value{color:var(--blue);}.card.green .card-value{color:var(--green);}
-.card.red .card-value{color:var(--red);}.card.yellow .card-value{color:var(--yellow);}
-.card.purple .card-value{color:var(--purple);}.card.gray .card-value{color:var(--gray);}
-.card-accent{position:absolute;top:0;left:0;bottom:0;width:4px;border-radius:10px 0 0 10px;}
-.card.blue .card-accent{background:var(--blue);}.card.green .card-accent{background:var(--green);}
-.card.red .card-accent{background:var(--red);}.card.yellow .card-accent{background:var(--yellow);}
-.card.purple .card-accent{background:var(--purple);}.card.gray .card-accent{background:var(--gray);}
-.sec-title{font-size:.85rem;font-weight:700;color:var(--text);margin:1.2rem 0 .7rem;display:flex;align-items:center;gap:.4rem;}
-.sec-title::after{content:'';flex:1;height:1px;background:var(--border);margin-left:.4rem;}
-.divider{height:1px;background:var(--border);margin:1.1rem 0;}
-.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:var(--page);}
-table{width:100%;border-collapse:collapse;font-size:.8rem;}
-thead th{background:#F9FAFB;color:var(--text-light);font-size:.64rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:.55rem .8rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;}
-tbody tr{border-bottom:1px solid #F3F4F6;transition:background .1s;}
-tbody tr:hover{background:#F9FAFB;}
-tbody td{padding:.5rem .8rem;color:var(--text);}
-td.mono{font-family:'JetBrains Mono',monospace;font-size:.76rem;}
-.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:.65rem;font-weight:600;white-space:nowrap;}
-.pill-green{background:var(--green-bg);color:var(--green);}.pill-red{background:var(--red-bg);color:var(--red);}
-.pill-yellow{background:var(--yellow-bg);color:var(--yellow);}.pill-blue{background:var(--blue-bg);color:var(--blue);}
-.pill-purple{background:var(--purple-bg);color:var(--purple);}.pill-gray{background:var(--gray-bg);color:var(--gray);}
-.empty-state{text-align:center;padding:3.5rem 1rem;}
-.empty-state .icon{font-size:2.2rem;margin-bottom:.6rem;}
-.empty-state p{font-size:.85rem;color:var(--text-light);}
-label.fl{display:block;font-size:.7rem;font-weight:600;color:var(--text-light);margin-bottom:.28rem;}
-input,select,textarea{width:100%;background:#F9FAFB;border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:'Inter',sans-serif;font-size:.83rem;padding:.48rem .75rem;outline:none;transition:border .15s;}
-input:focus,select:focus{border-color:var(--blue);background:#fff;}
-.btn{display:inline-flex;align-items:center;gap:.35rem;padding:.46rem .9rem;border-radius:7px;font-size:.79rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;font-family:'Inter',sans-serif;}
-.btn-primary{background:var(--tim-blue);color:#fff;}.btn-primary:hover{background:#0a4fae;}
-.btn-red{background:var(--red-bg);color:var(--red);border:1px solid #FECACA;}.btn-red:hover{background:#FEE2E2;}
-.btn-green{background:var(--green-bg);color:var(--green);border:1px solid #BBF7D0;}.btn-green:hover{background:#DCFCE7;}
-.btn-ghost{background:#F9FAFB;color:var(--text-light);border:1px solid var(--border);}.btn-ghost:hover{color:var(--text);background:#F3F4F6;}
-.btn-sm{padding:.32rem .7rem;font-size:.74rem;}.btn-full{width:100%;justify-content:center;}
-.btn-row{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center;}
-.alert{padding:.6rem .85rem;border-radius:7px;font-size:.81rem;margin:.35rem 0;line-height:1.5;}
-.alert-ok{background:var(--green-bg);border:1px solid #BBF7D0;color:var(--green);}
-.alert-warn{background:var(--yellow-bg);border:1px solid #FDE68A;color:var(--yellow);}
-.alert-err{background:var(--red-bg);border:1px solid #FECACA;color:var(--red);}
-.alert-info{background:var(--blue-bg);border:1px solid #BFDBFE;color:var(--blue);}
-#modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;display:none;align-items:center;justify-content:center;}
-#modal-overlay.open{display:flex;}
-#modal-box{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.5rem;width:430px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.15);}
-#modal-box h3{font-size:.95rem;font-weight:700;margin-bottom:1rem;display:flex;align-items:center;gap:.5rem;color:var(--text);}
-.modal-close{margin-left:auto;background:none;border:none;color:var(--text-light);font-size:1.1rem;cursor:pointer;padding:.2rem .4rem;border-radius:4px;}
-.modal-close:hover{color:var(--text);}
-.form-group{margin-bottom:.75rem;}
-.resp-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:.9rem;margin-bottom:1.2rem;}
-.resp-card{background:var(--page);border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.2rem;text-align:center;border-top:3px solid transparent;}
-.resp-card.boleto{border-top-color:var(--blue);}.resp-card.pix{border-top-color:var(--green);}.resp-card.bloquear{border-top-color:var(--red);}
-.resp-icon{font-size:1.7rem;margin-bottom:.35rem;}
-.resp-label{font-size:.63rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-light);margin-bottom:.3rem;}
-.resp-value{font-size:2rem;font-weight:700;font-family:'JetBrains Mono',monospace;line-height:1;}
-.resp-card.boleto .resp-value{color:var(--blue);}.resp-card.pix .resp-value{color:var(--green);}.resp-card.bloquear .resp-value{color:var(--red);}
-.resp-pct{font-size:.72rem;color:var(--text-light);margin-top:.25rem;}
-.progress{height:5px;background:var(--gray-bg);border-radius:3px;overflow:hidden;margin:.25rem 0;}
-.progress-bar{height:100%;border-radius:3px;transition:width .5s;}
-.upload-zone{border:2px dashed var(--border);border-radius:10px;padding:2rem;text-align:center;background:#FAFAFA;cursor:pointer;transition:all .2s;}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:var(--blue-bg);}
-.upload-zone .icon{font-size:2rem;margin-bottom:.5rem;}
-.upload-zone p{font-size:.83rem;color:var(--text-light);}
-.upload-zone strong{color:var(--blue);}
-.upload-progress{background:var(--blue-bg);border:1px solid #BFDBFE;border-radius:8px;padding:.75rem 1rem;margin-top:.75rem;}
-.upload-bar-wrap{background:#BFDBFE;border-radius:3px;height:6px;margin:.4rem 0;}
-.upload-bar{background:var(--blue);height:6px;border-radius:3px;transition:width .3s;}
-.funil-row{display:grid;gap:.45rem;grid-template-columns:repeat(9,1fr);}
-.funil-card{background:var(--page);border:1px solid var(--border);border-radius:8px;padding:.6rem .3rem;text-align:center;border-top:3px solid var(--border);}
-.funil-card .fl{font-size:.56rem;color:var(--text-light);font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:.2rem;}
-.funil-card .fv{font-size:1.25rem;font-weight:700;font-family:'JetBrains Mono',monospace;}
-.chart-box{background:var(--page);border:1px solid var(--border);border-radius:8px;padding:.9rem 1rem;margin-bottom:.9rem;}
-.chart-box h4{font-size:.68rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--text-light);margin-bottom:.7rem;}
-.pagination{display:flex;align-items:center;justify-content:space-between;margin-top:.65rem;font-size:.76rem;color:var(--text-light);}
-.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,.1);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
-#loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:999;display:none;align-items:center;justify-content:center;flex-direction:column;gap:.8rem;}
-#loading-overlay.show{display:flex;}
-@media(max-width:768px){#sidebar{display:none;}.resp-cards{grid-template-columns:1fr;}.funil-row{grid-template-columns:repeat(3,1fr);}}
+
+header {
+  background: #1E88E5;
+  color: white;
+  padding: 15px;
+}
+
+.container {
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+button {
+  padding: 10px;
+  margin: 5px;
+  cursor: pointer;
+}
+
+#modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+}
+
+.modal-box {
+  background: white;
+  padding: 20px;
+  width: 300px;
+  margin: 100px auto;
+  border-radius: 10px;
+}
 </style>
 </head>
+
 <body>
 
-<div id="loading-overlay">
-  <div class="spinner" style="width:28px;height:28px;border-width:3px"></div>
-  <div style="font-size:.85rem;color:#6B7280" id="loading-text">Carregando...</div>
+<header>
+  <h2>📊 Dashboard de Faturas</h2>
+</header>
+
+<div class="container">
+
+<div class="card">
+  <button onclick="abrirModal()">⚙️ Configurar</button>
+  <button onclick="carregarDados()">🔄 Atualizar</button>
+  <input type="file" id="fileInput">
+  <button onclick="uploadExcel()">📂 Importar Excel</button>
 </div>
 
-<!-- MODAL CONFIG -->
-<div id="modal-overlay" onclick="if(event.target===this)fecharModal()">
-<div id="modal-box">
-  <h3>Configuracoes <button class="modal-close" onclick="fecharModal()">x</button></h3>
-  <div class="form-group"><label class="fl">Supabase URL</label><input id="inp-url" type="text" placeholder="https://xxxx.supabase.co"></div>
-  <div class="form-group"><label class="fl">Supabase Anon Key</label><input id="inp-key" type="password" placeholder="eyJhbGci..."></div>
-  <div id="modal-status"></div>
-  <button class="btn btn-primary btn-full" onclick="conectarSupabase()" style="margin-top:.4rem">Conectar e salvar</button>
-  <div style="margin-top:1rem;padding-top:.9rem;border-top:1px solid var(--border)">
-    <div class="form-group"><label class="fl">Webhook n8n (disparo)</label><input id="inp-webhook" type="text" placeholder="https://n8n.xxx.com/webhook/..."></div>
-    <button class="btn btn-ghost btn-full btn-sm" onclick="salvarWebhook()">Salvar webhook</button>
-  </div>
-</div>
+<div class="card">
+  <h3>Resumo</h3>
+  <div id="grafico"></div>
 </div>
 
-<!-- SIDEBAR -->
-<nav id="sidebar">
-  <div class="sb-header">
-    <img class="atn" src="data:image/png;base64,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" alt="ATN">
-    <div><div class="sb-header-text">Controle de Faturas</div><div class="sb-header-sub">ATN x TIM Brasil</div></div>
-  </div>
+<div class="card">
+  <h3>Status</h3>
+  <div id="status"></div>
+</div>
 
-  <div class="sb-section">Principal</div>
-  <ul class="sb-nav">
-    <li><a id="nav-dashboard" class="active" onclick="switchTab('dashboard','nav-dashboard')"><span class="icon">&#x1F4CA;</span> Dashboard</a></li>
-    <li><a id="nav-respostas" onclick="switchTab('respostas','nav-respostas')"><span class="icon">&#x1F4AC;</span> Respostas Clientes <span class="sb-badge" id="badge-resp">0</span></a></li>
-  </ul>
+</div>
 
-  <div class="sb-divider"></div>
-  <div class="sb-section">Gestao</div>
-  <ul class="sb-nav">
-    <li><a id="nav-upload" onclick="switchTab('upload','nav-upload')"><span class="icon">&#x2B06;&#xFE0F;</span> Upload de Safra</a></li>
-    <li><a id="nav-conectadas" onclick="switchTab('conectadas','nav-conectadas')"><span class="icon">&#x1F517;</span> Upload Conectadas</a></li>
-    <li><a id="nav-controle" onclick="switchTab('controle','nav-controle')"><span class="icon">&#x1F3AF;</span> Controle de Envio</a></li>
-    <li><a id="nav-equipes" onclick="switchTab('equipes','nav-equipes')"><span class="icon">&#x1F465;</span> Faturas por Equipe</a></li>
-    <li><a id="nav-estorno" onclick="switchTab('estorno','nav-estorno')"><span class="icon">&#x1F4C9;</span> Estorno por Safra</a></li>
-  </ul>
+<!-- MODAL -->
+<div id="modal">
+  <div class="modal-box">
 
-  <div class="sb-divider"></div>
-  <div class="sb-section">Analise</div>
-  <ul class="sb-nav">
-    <li><a id="nav-resumo" onclick="switchTab('resumo','nav-resumo')"><span class="icon">&#x1F4C8;</span> Resumo e Funil</a></li>
-    <li><a id="nav-envios" onclick="switchTab('envios','nav-envios')"><span class="icon">&#x1F4F2;</span> Envios do Dia</a></li>
-    <li><a id="nav-historico" onclick="switchTab('historico','nav-historico')"><span class="icon">&#x1F4B0;</span> Hist. Pagamentos</a></li>
-    <li><a id="nav-hist-envios" onclick="switchTab('hist-envios','nav-hist-envios')"><span class="icon">&#x1F4CB;</span> Hist. Envios</a></li>
-    <li><a id="nav-fluxo" onclick="switchTab('fluxo','nav-fluxo')"><span class="icon">&#x2699;&#xFE0F;</span> Fluxo de Etapas</a></li>
-  </ul>
+    <h3>Configuração</h3>
 
-  <div class="sb-bottom">
-    <div class="sb-status">
-      <div><span class="sb-dot" id="dot-conn"></span><span class="sb-conn-text" id="sb-conn-label">Desconectado</span></div>
-      <button class="sb-cfg-btn" onclick="abrirModal()">&#x2699;&#xFE0F;</button>
-    </div>
-    <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
-    <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
-      <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v4</span>
-    </div>
-  </div>
-</nav>
+    <input id="url" placeholder="Supabase URL"><br><br>
+    <input id="key" placeholder="Anon Key"><br><br>
+    <input id="webhook" placeholder="Webhook n8n"><br><br>
 
-<!-- MAIN -->
-<div id="main">
-  <div id="topbar">
-    <div class="topbar-brand">
-      <img class="tim-logo" src="data:image/svg+xml;base64,PHN2ZwogICB4bWxuczpkYz0iaHR0cDovL3B1cmwub3JnL2RjL2VsZW1lbnRzLzEuMS8iCiAgIHhtbG5zOmNjPSJodHRwOi8vY3JlYXRpdmVjb21tb25zLm9yZy9ucyMiCiAgIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyIKICAgeG1sbnM6c3ZnPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIKICAgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIgogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIgogICB3aWR0aD0iNzAwIgogICBoZWlnaHQ9IjcwMCIKICAgdmlld0JveD0iMCAwIDcwMCA3MDAiCiAgIHZlcnNpb249IjEuMSIKICAgaWQ9InN2ZzYiCiAgIHNvZGlwb2RpOmRvY25hbWU9InRpbS1sb2dvLnN2ZyIKICAgc3R5bGU9ImZpbGw6bm9uZSIKICAgaW5rc2NhcGU6dmVyc2lvbj0iMC45Mi40ICg1ZGE2ODljMzEzLCAyMDE5LTAxLTE0KSI+CiAgPG1ldGFkYXRhCiAgICAgaWQ9Im1ldGFkYXRhMTIiPgogICAgPHJkZjpSREY+CiAgICAgIDxjYzpXb3JrCiAgICAgICAgIHJkZjphYm91dD0iIj4KICAgICAgICA8ZGM6Zm9ybWF0PmltYWdlL3N2Zyt4bWw8L2RjOmZvcm1hdD4KICAgICAgICA8ZGM6dHlwZQogICAgICAgICAgIHJkZjpyZXNvdXJjZT0iaHR0cDovL3B1cmwub3JnL2RjL2RjbWl0eXBlL1N0aWxsSW1hZ2UiIC8+CiAgICAgICAgPGRjOnRpdGxlPjwvZGM6dGl0bGU+CiAgICAgIDwvY2M6V29yaz4KICAgIDwvcmRmOlJERj4KICA8L21ldGFkYXRhPgogIDxkZWZzCiAgICAgaWQ9ImRlZnMxMCIgLz4KICA8c29kaXBvZGk6bmFtZWR2aWV3CiAgICAgcGFnZWNvbG9yPSIjZmZmZmZmIgogICAgIGJvcmRlcmNvbG9yPSIjNjY2NjY2IgogICAgIGJvcmRlcm9wYWNpdHk9IjEiCiAgICAgb2JqZWN0dG9sZXJhbmNlPSIxMCIKICAgICBncmlkdG9sZXJhbmNlPSIxMCIKICAgICBndWlkZXRvbGVyYW5jZT0iMTAiCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAiCiAgICAgaW5rc2NhcGU6cGFnZXNoYWRvdz0iMiIKICAgICBpbmtzY2FwZTp3aW5kb3ctd2lkdGg9IjE5MjAiCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTAxNyIKICAgICBpZD0ibmFtZWR2aWV3OCIKICAgICBzaG93Z3JpZD0iZmFsc2UiCiAgICAgaW5rc2NhcGU6em9vbT0iMC4zNjg2NzI0NSIKICAgICBpbmtzY2FwZTpjeD0iLTM3Mi41Mjk4MyIKICAgICBpbmtzY2FwZTpjeT0iMjc2Ljc5NjI1IgogICAgIGlua3NjYXBlOndpbmRvdy14PSItOCIKICAgICBpbmtzY2FwZTp3aW5kb3cteT0iLTgiCiAgICAgaW5rc2NhcGU6d2luZG93LW1heGltaXplZD0iMSIKICAgICBpbmtzY2FwZTpjdXJyZW50LWxheWVyPSJzdmc2IiAvPgogIDxwYXRoCiAgICAgZD0ibSAzODkuOTE5NTQsMjc4Ljk4NjkxIGMgMi44NjM1OCwwIDMuNDM2NDQsMC4zNDQgMy40MzY0NCwxMC40MjI5IHYgOS4yNzc1MiBjIDAsOS42MjExOCAtMC44MDI0MywxMC43NjY1NCAtMy40MzY0NCwxMC43NjY1NCBIIDM1Ny43MzQzIHYgMTA4LjQ2Njc3IGMgMCwyLjQwNTE1IC0zLjA5MjQ0LDIuOTc4MDEgLTEzLjg1ODc2LDIuOTc4MDEgaCAtNS43MjcxNiBjIC0xMC45OTUxOCwwIC0xMi44MjgxOSwtMC41NzI4NiAtMTIuODI4MTksLTIuOTc4MDEgViAzMDkuNDUzODcgaCAtMzIuMTg0NTMgYyAtMi42MzQ3MiwwIC0zLjQzNjQ0LC0wLjgwMTc5IC0zLjQzNjQ0LC0xMC43NjY1NCB2IC05LjI3NzUyIGMgMCwtMTAuNDIyOSAwLjU3Mjg2LC0xMC40MjI5IDMuNDM2NDQsLTEwLjQyMjkgeiBtIDU3LjcyNzE4LDMuMDkyNTEgYyAwLC0yLjA2MTY0IC0yLjk3ODAxLC0zLjA5MjUxIC0xMy40MDEwNCwtMy4wOTI1MSBoIC02LjA3MDQ1IGMgLTEwLjk5NTg5LDAgLTEyLjgyODE4LDAuOTE2MjkgLTEyLjgyODE4LDMuMDkyNTEgdiAxMzUuOTU1NjUgYyAwLDIuNDA1ODYgMS44MzIyOSwyLjk3ODAxIDEyLjgyODE4LDIuOTc4MDEgaCA2LjA3MDQ1IGMgMTAuNDIzMDMsMCAxMy40MDEwNCwtMC41NzIxNSAxMy40MDEwNCwtMi45NzgwMSB6IG0gMTU3LjE0NTA3LC0zLjA5MjUxIGggLTkuNTA2ODggYyAtMTIuMTQwOSwwIC0xMi44MjgxOSwxLjM3NDQ0IC0xMy44NTg3NiwzLjQzNjE2IGwgLTE4Ljc4NDIxLDQ1LjAxMzIxIGMgLTYuMjk5MywxNS4wMDQ0MSAtMTIuNzEzNzUsMzEuMDM5MzIgLTE1LjExODksMzkuNDAxMiAtMi4yOTA3MiwtOC4zNjE4OCAtNi40MTQ0NSwtMTkuNDcxNzEgLTE1LjExODkxLC00MC4yMDI5OSBsIC0xOC42Njk3NywtNDQuMjExNDIgYyAtMS4xNDUsLTIuNjM0MzcgLTUuODQxNTksLTMuNDM2MTYgLTE2LjE0OTQ4LC0zLjQzNjE2IGggLTEwLjUzNzQ2IGMgLTEwLjQyMzAzLDAgLTEyLjQ4NDksMC45MTYyOSAtMTIuNDg0OSwzLjA5MjUxIHYgMTM1Ljk1NTY1IGMgMCwyLjQwNTg2IDIuMDYxODcsMi45NzgwMSAxMi44MjgxOSwyLjk3ODAxIGggNS44NDE1OSBjIDEwLjY1MTg5LDAgMTMuNjI5OSwtMC41NzIxNSAxMy42Mjk5LC0yLjk3ODAxIHYgLTgwLjc0ODYxIGggMC44MDE3MSBjIDAsMCAwLjkxNjE1LDMuNzc5NzIgMi41MTk1OCw3LjIxNTg4IGwgMjEuNTMzMzYsNTAuNTExMDggYyAwLjkxNjE0LDIuMjkwNzMgMi4wNjE4NiwzLjIwNjg3IDEyLjE0MDg5LDMuMjA2ODcgaCA2LjQxNDQ1IGMgMTAuMTkzNDYsMCAxMC45OTUxOCwtMC44MDE3MSAxMS45MTEzMywtMy4yMDY4NyBsIDE5LjcwMTA2LC00OC42Nzg1MSBjIDEuODMyMjksLTQuNTgxNTEgMy4yMDY4NiwtOS4wNDg0NSAzLjIwNjg2LC05LjA0ODQ1IGggMC44MDE3MiB2IDgwLjYzNDE4IGMgMCwyLjQwNTE1IDIuMDYxODYsMi45NzgwMSAxMy4yODU5LDIuOTc4MDEgaCA1LjcyNzE2IGMgMTAuNDIzMDMsMCAxMy40MDEwNCwtMC41NzI4NiAxMy40MDEwNCwtMi45NzgwMSBWIDI4Mi4wNzk0MiBjIDAsLTIuMTc2MjIgLTMuMDkyNDQsLTMuMDkyNTEgLTEzLjUxNTQ3LC0zLjA5MjUxIHoiCiAgICAgaWQ9InBhdGgyIgogICAgIHN0eWxlPSJmaWxsOiMwNjNiODg7ZmlsbC1vcGFjaXR5OjE7c3Ryb2tlLXdpZHRoOjcuMTA3NDIwNDQiCiAgICAgaW5rc2NhcGU6Y29ubmVjdG9yLWN1cnZhdHVyZT0iMCIgLz4KICA8cGF0aAogICAgIGQ9Ik0gMjQzLjUzNDM5LDMwOS40NTM4NyBIIDg5LjkzOTQwOSBjIC0yLjI5MDcyMiwwIC00LjM1MjM5MiwtMC45MTYyOSAtNS44NDEzODMsLTIuNDA1MjkgLTEuNDg4OTgzLC0xLjQ4OTAxIC0yLjQwNTI4NiwtMy41NTA2NiAtMi40MDUyODYsLTUuNzI2ODggdiAtMTQuMDg4MTIgYyAwLC0yLjI5MDcyIDAuOTE2MzAzLC00LjIzNzg3IDIuNDA1Mjg2LC01LjcyNjg3IDEuNjAzNTI3LC0xLjYwMzUxIDMuNTUwNjYxLC0yLjUxOTggNS44NDEzODMsLTIuNTE5OCBIIDI0My41MzQzOSBjIDIuMjkwNzMsMCA0LjM1MjU5LDAuOTE2MjkgNS44NDE1OSwyLjQwNTMgMS40ODkwMSwxLjQ4OSAyLjQwNTE1LDMuNDM2MDggMi40MDUxNSw1LjcyNjg3IHYgMTMuOTczNTUgYyAwLDIuMjkwNzkgLTAuOTE2MTQsNC4yMzc4OCAtMi40MDUxNSw1LjcyNjg3IC0xLjQ4OSwxLjYwMzUxIC0zLjU1MDg2LDIuNjM0MzcgLTUuODQxNTksMi42MzQzNyB6IG0gLTkzLjgwNjM2LDI1LjMxMjc5IEggODkuOTM5NDA5IGMgLTIuMjkwNzIyLDAgLTQuMzUyMzkyLDAuOTE2MjkgLTUuNzI2ODQ3LDIuNDA1MyAtMS40ODg5ODMsMS40ODg5MyAtMi40MDUyODQsMy41NTA2NiAtMi40MDUyODQsNS43MjY4NyB2IDEzLjk3MzMzIGMgMCwyLjI5MDcyIDAuOTE2MzAxLDQuMzUyNTkgMi40MDUyODQsNS43MjcxNyAxLjQ4ODk5MSwxLjQ4OTAxIDMuNTUwNjY5LDIuNDA1MTUgNS44NDE0MTksMi40MDUxNSBoIDU5Ljc4ODU0OSB2IC0zMC4yMzc4MSB6IG0gOTkuNjQ3OTUsMi41MTk4MSBjIC0xLjQ4OSwtMS40ODkwMSAtMy41NTA4NiwtMi40MDUzMSAtNS44NDE1OSwtMi40MDUzMSBoIC01OS43ODkwNCB2IDMwLjM1MjE3IGggNTkuNzg5MDQgYyAyLjI5MDczLDAgNC4zNTI1OSwtMC45MTYxNCA1Ljg0MTU5LC0yLjQwNTE1IDEuNDg5MDEsLTEuNDg5IDIuNDA1MTUsLTMuNTUwODcgMi40MDUxNSwtNS43MjY0NSB2IC0xNC4wODg0IGMgMCwtMi4yOTA3MSAtMC45MTYxNCwtNC4zNTI0NCAtMi40MDUxNSwtNS43MjY4NiB6IG0gMCw1NS43Nzk1MyBjIC0xLjQ4OSwtMS40ODkwMSAtMy41NTA4NiwtMi40MDUxNiAtNS44NDE1OSwtMi40MDUxNiBoIC01OS43ODkwNCB2IDMwLjM1MjI1IGggNTkuNzg5MDQgYyAyLjI5MDczLDAgNC4zNTI1OSwtMC45MTYxNSA1Ljg0MTU5LC0yLjQwNTE2IDEuNDg5MDEsLTEuNDg5MDEgMi40MDUxNSwtMy41NTA4NyAyLjQwNTE1LC01LjcyNjQ1IHYgLTEzLjk3Mzg5IGMgMCwtMi4yOTA3MiAtMC45MTYxNCwtNC4zNTI1OCAtMi40MDUxNSwtNS44NDE1OSB6IG0gLTk5LjY0Nzk1LC0yLjQwNTE2IEggODkuOTM5NDA5IGMgLTIuMjkwNzIyLDAgLTQuMzUyMzkyLDAuOTE2MTUgLTUuNzI2ODQ3LDIuNDA1MTUgLTEuNDg4OTgzLDEuNDg5MDEgLTIuNDA1Mjg0LDMuNTUwODcgLTIuNDA1Mjg0LDUuNzI3MTYgdiAxMy45NzMxOSBjIDAsMi4yOTA3MiAwLjkxNjMwMSw0LjM1MjU4IDIuNDA1Mjg0LDUuNzI3MTcgMS40ODg5OTEsMS40ODkgMy41NTA2NjksMi40MDUxNSA1Ljg0MTQxOSwyLjQwNTE1IGggNTkuNzg4NTQ5IHYgLTMwLjIzNzgxIHoiCiAgICAgaWQ9InBhdGg0IgogICAgIGlua3NjYXBlOmNvbm5lY3Rvci1jdXJ2YXR1cmU9IjAiCiAgICAgc3R5bGU9ImZpbGw6I2ViMDAyODtzdHJva2Utd2lkdGg6Ny4xMDc0MjA0NCIgLz4KPC9zdmc+" alt="TIM">
-      <div class="topbar-brand-sep"></div>
-      <div><div class="topbar-brand-text">Controle de Faturas ATN</div><div class="topbar-brand-sub">Campanhas em massa via API Meta</div></div>
-    </div>
-    <div class="topbar-right">
-      <span class="topbar-date" id="tb-date"></span>
-      <span class="conn-badge err" id="tb-conn-badge">Desconectado</span>
-      <button class="btn btn-ghost btn-sm" onclick="recarregarTudo()">Atualizar</button>
-    </div>
-  </div>
-
-  <div id="content">
-    <div id="banner-disconnected" class="show">
-      <h2>Painel Desconectado</h2>
-      <p>Configure a conexao com o Supabase para carregar os dados das safras e envios.</p>
-      <button class="btn btn-primary" onclick="abrirModal()">Configurar conexao agora</button>
-    </div>
-
-    <!-- DASHBOARD -->
-    <div id="tab-dashboard" class="tab-panel active">
-      <div class="sec-title">Visao geral</div>
-      <div class="cards-row">
-        <div class="card blue"><div class="card-accent"></div><div class="card-label">Total na Base</div><div class="card-value" id="d-total">--</div><div class="card-sub">Registros da safra</div></div>
-        <div class="card green"><div class="card-accent"></div><div class="card-label">Status Ativo</div><div class="card-value" id="d-ativo">--</div><div class="card-sub">Acessos ativos</div></div>
-        <div class="card red"><div class="card-accent"></div><div class="card-label">Cancelados</div><div class="card-value" id="d-canc">--</div><div class="card-sub">Cancelados + Bloqueados</div></div>
-        <div class="card yellow"><div class="card-accent"></div><div class="card-label">Fatura Aberta</div><div class="card-value" id="d-aberta">--</div><div class="card-sub">Inadimplentes ativos</div></div>
-        <div class="card green"><div class="card-accent"></div><div class="card-label">Fatura Paga</div><div class="card-value" id="d-paga">--</div><div class="card-sub">Adimplentes</div></div>
-        <div class="card blue"><div class="card-accent"></div><div class="card-label">Valor em Aberto</div><div class="card-value" id="d-valor" style="font-size:1.1rem">--</div><div class="card-sub">Total faturas abertas</div></div>
-      </div>
-      <div class="divider"></div>
-      <div class="sec-title">Portabilidade</div>
-      <div class="cards-row">
-        <div class="card green"><div class="card-accent"></div><div class="card-label">Port. Concluida</div><div class="card-value" id="d-port-ok">--</div><div class="card-sub">Cruzamento confirmado</div></div>
-        <div class="card red"><div class="card-accent"></div><div class="card-label">Port. Nao Concluida</div><div class="card-value" id="d-port-nok">--</div><div class="card-sub">Pendente ou nao encontrada</div></div>
-        <div class="card blue"><div class="card-accent"></div><div class="card-label">% Concluida</div><div class="card-value" id="d-port-pct">--</div><div class="card-sub">Do total da base</div></div>
-        <div class="card yellow"><div class="card-accent"></div><div class="card-label">Pagamentos</div><div class="card-value" id="d-pag">--</div><div class="card-sub">Baixas registradas</div></div>
-        <div class="card red"><div class="card-accent"></div><div class="card-label">% Estorno</div><div class="card-value" id="d-estorno">--</div><div class="card-sub">Meta: 38%</div></div>
-      </div>
-      <div class="divider"></div>
-      <div class="sec-title">Respostas WhatsApp</div>
-      <div class="resp-cards">
-        <div class="resp-card boleto"><div class="resp-icon">&#x1F9FE;</div><div class="resp-label">Solicitaram Boleto</div><div class="resp-value" id="d-boleto">--</div><div class="resp-pct" id="d-boleto-pct"></div></div>
-        <div class="resp-card pix"><div class="resp-icon">&#x26A1;</div><div class="resp-label">Solicitaram PIX</div><div class="resp-value" id="d-pix">--</div><div class="resp-pct" id="d-pix-pct"></div></div>
-        <div class="resp-card bloquear"><div class="resp-icon">&#x1F6AB;</div><div class="resp-label">Pediram Bloqueio</div><div class="resp-value" id="d-bloquear">--</div><div class="resp-pct" id="d-bloquear-pct"></div></div>
-      </div>
-      <div style="display:grid;grid-template-columns:2fr 1fr;gap:.9rem">
-        <div class="chart-box"><h4>Clientes por data de vencimento</h4><div id="chart-venc" style="height:210px"></div></div>
-        <div class="chart-box"><h4>Portabilidade</h4><div id="chart-port" style="height:210px"></div></div>
-      </div>
-    </div>
-
-    <!-- RESPOSTAS -->
-    <div id="tab-respostas" class="tab-panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem">
-        <div><div class="sec-title" style="margin:0">Respostas dos Clientes via WhatsApp</div><div style="font-size:.76rem;color:var(--text-light);margin-top:.2rem">Escolhas feitas ao receber a fatura</div></div>
-        <div class="btn-row">
-          <button class="btn btn-ghost btn-sm" onclick="carregarRespostas()">Atualizar</button>
-          <button class="btn btn-ghost btn-sm" onclick="exportarRespostas()">Exportar CSV</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:.7rem;margin-bottom:.9rem;flex-wrap:wrap;align-items:flex-end">
-        <div style="flex:1;min-width:130px"><label class="fl">De</label><input type="date" id="filt-resp-de" onchange="filtrarRespostas()"></div>
-        <div style="flex:1;min-width:130px"><label class="fl">Ate</label><input type="date" id="filt-resp-ate" onchange="filtrarRespostas()"></div>
-        <div style="flex:1;min-width:130px"><label class="fl">Tipo</label>
-          <select id="filt-resp-tipo" onchange="filtrarRespostas()">
-            <option value="todos">Todos</option><option value="BOLETO">Boleto</option>
-            <option value="CODIGO_PIX">PIX</option><option value="BLOQUEAR">Bloquear</option>
-          </select></div>
-        <div style="display:flex;gap:.4rem;padding-bottom:1px">
-          <button class="btn btn-ghost btn-sm" onclick="setRespPeriodo(0)">Hoje</button>
-          <button class="btn btn-ghost btn-sm" onclick="setRespPeriodo(7)">7d</button>
-          <button class="btn btn-ghost btn-sm" onclick="setRespPeriodo(30)">30d</button>
-          <button class="btn btn-ghost btn-sm" onclick="setRespPeriodo(-1)">Tudo</button>
-        </div>
-      </div>
-      <div class="resp-cards">
-        <div class="resp-card boleto"><div class="resp-icon">&#x1F9FE;</div><div class="resp-label">Solicitaram Boleto</div><div class="resp-value" id="r-boleto">--</div><div class="resp-pct" id="r-boleto-pct">-- do total</div><div style="margin-top:.6rem"><div class="progress"><div class="progress-bar" id="r-boleto-bar" style="background:var(--blue);width:0%"></div></div></div></div>
-        <div class="resp-card pix"><div class="resp-icon">&#x26A1;</div><div class="resp-label">Solicitaram PIX</div><div class="resp-value" id="r-pix">--</div><div class="resp-pct" id="r-pix-pct">-- do total</div><div style="margin-top:.6rem"><div class="progress"><div class="progress-bar" id="r-pix-bar" style="background:var(--green);width:0%"></div></div></div></div>
-        <div class="resp-card bloquear"><div class="resp-icon">&#x1F6AB;</div><div class="resp-label">Pediram Bloqueio</div><div class="resp-value" id="r-bloquear">--</div><div class="resp-pct" id="r-bloquear-pct">-- do total</div><div style="margin-top:.6rem"><div class="progress"><div class="progress-bar" id="r-bloquear-bar" style="background:var(--red);width:0%"></div></div></div></div>
-      </div>
-      <div class="chart-box"><h4>Respostas por dia</h4><div id="chart-respostas-dia" style="height:180px"></div></div>
-      <div class="sec-title">Registro detalhado</div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>#</th><th>Telefone</th><th>Nome</th><th>Resposta</th><th>Fatura</th><th>Valor</th><th>Data/Hora</th></tr></thead>
-        <tbody id="tbody-respostas"><tr><td colspan="7"><div class="empty-state"><p>Carregando...</p></div></td></tr></tbody></table>
-      </div>
-      <div class="pagination"><span id="resp-count-text">--</span><div class="btn-row"><button class="btn btn-ghost btn-sm" id="btn-resp-prev" onclick="paginarRespostas(-1)">Anterior</button><button class="btn btn-ghost btn-sm" id="btn-resp-next" onclick="paginarRespostas(1)">Proxima</button></div></div>
-    </div>
-
-    <!-- UPLOAD SAFRA -->
-    <div id="tab-upload" class="tab-panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem">
-        <div class="sec-title" style="margin:0">Upload de Safra</div>
-      </div>
-      <div class="alert alert-info">Faca upload do CSV de faturas exportado do sistema TIM. O painel ira processar, cruzar com a base de conectadas e atualizar o Supabase automaticamente.</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
-        <div style="background:var(--page);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
-          <div style="font-size:.85rem;font-weight:700;margin-bottom:.3rem">Nova Safra / Atualizar Status</div>
-          <div style="font-size:.76rem;color:var(--text-light);margin-bottom:.9rem">Sobe o CSV completo da safra ou atualiza status dos clientes ativos</div>
-          <div style="display:grid;grid-template-columns:2fr 1fr;gap:.6rem">
-            <div class="form-group"><label class="fl">Mes da Safra</label>
-              <select id="inp-safra-mes">
-                <option value="">Selecione o mes</option>
-                <option value="JANEIRO">JANEIRO</option><option value="FEVEREIRO">FEVEREIRO</option>
-                <option value="MARCO">MARCO</option><option value="ABRIL">ABRIL</option>
-                <option value="MAIO">MAIO</option><option value="JUNHO">JUNHO</option>
-                <option value="JULHO">JULHO</option><option value="AGOSTO">AGOSTO</option>
-                <option value="SETEMBRO">SETEMBRO</option><option value="OUTUBRO">OUTUBRO</option>
-                <option value="NOVEMBRO">NOVEMBRO</option><option value="DEZEMBRO">DEZEMBRO</option>
-              </select>
-            </div>
-            <div class="form-group"><label class="fl">Ano</label>
-              <input id="inp-safra-ano" type="number" value="2026" min="2024" max="2030" style="text-align:center">
-            </div>
-          </div>
-          <div class="form-group"><label class="fl">Modo de importacao</label>
-            <select id="inp-safra-modo">
-              <option value="nova">Safra nova - insere todos os registros</option>
-              <option value="atualizar">Atualizar status - apenas atualiza clientes existentes</option>
-            </select>
-          </div>
-          <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave()" ondrop="dropFile(event)">
-            <div class="icon">&#x1F4C2;</div>
-            <p><strong>Clique para selecionar</strong> ou arraste o arquivo aqui</p>
-            <p style="font-size:.72rem;margin-top:.3rem">CSV exportado do sistema TIM (encoding Latin-1)</p>
-          </div>
-          <input type="file" id="file-input" accept=".csv" style="display:none" onchange="processarArquivo(this.files[0])">
-          <div id="upload-progress" style="display:none" class="upload-progress">
-            <div style="font-size:.78rem;font-weight:600" id="upload-status-text">Processando...</div>
-            <div class="upload-bar-wrap"><div class="upload-bar" id="upload-bar" style="width:0%"></div></div>
-            <div style="font-size:.72rem;color:var(--text-light)" id="upload-detail"></div>
-          </div>
-          <div id="upload-result" style="margin-top:.5rem"></div>
-        </div>
-        <div style="background:var(--page);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
-          <div style="font-size:.85rem;font-weight:700;margin-bottom:.3rem">Baixar Base para Consulta RPA</div>
-          <div style="font-size:.76rem;color:var(--text-light);margin-bottom:.9rem">Exporta apenas clientes ativos com fatura em aberto para consultar novo status</div>
-          <div class="form-group"><label class="fl">Safra</label><select id="sel-safra-download"><option value="">Selecione a safra</option></select></div>
-          <div style="background:#F9FAFB;border:1px solid var(--border);border-radius:8px;padding:.8rem;margin-bottom:.8rem">
-            <div style="font-size:.72rem;font-weight:600;color:var(--text-light);margin-bottom:.4rem">FILTROS APLICADOS AUTOMATICAMENTE</div>
-            <div style="font-size:.76rem;line-height:1.8;color:var(--text)">
-              Status do acesso: <b>Ativo</b><br>Fatura mais recente: <b>Aberta</b><br>Excluidos: Cancelado, Bloqueado, Suspenso, Paga
-            </div>
-          </div>
-          <div id="download-stats" style="background:var(--blue-bg);border:1px solid #BFDBFE;border-radius:7px;padding:.6rem .8rem;font-size:.78rem;color:var(--blue);margin-bottom:.8rem;display:none">
-            <span id="download-count">0</span> clientes elegiveis para consulta
-          </div>
-          <button class="btn btn-primary btn-full" onclick="prepararDownload()">Verificar e baixar CSV</button>
-          <div style="font-size:.7rem;color:var(--text-light);margin-top:.5rem;text-align:center">Apos consulta no RPA, suba o arquivo novamente no modo Atualizar status</div>
-        </div>
-      </div>
-      <div class="sec-title" style="margin-top:1.2rem">Historico de Uploads</div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>Data</th><th>Safra</th><th>Modo</th><th>Registros</th><th>Novos</th><th>Atualizados</th><th>Erros</th><th>Status</th></tr></thead>
-        <tbody id="tbody-uploads"><tr><td colspan="8"><div class="empty-state"><p>Nenhum upload registrado</p></div></td></tr></tbody></table>
-      </div>
-    </div>
-
-    <!-- UPLOAD CONECTADAS -->
-    <div id="tab-conectadas" class="tab-panel">
-      <div class="sec-title">Upload de Conectadas</div>
-      <div class="alert alert-info" style="margin-bottom:1rem">
-        Importe o arquivo XLS de conectadas para calcular o GROSS correto por safra via DATA_ATIVACAO.
-        Colunas necessarias: TELEFONE_PORTADO, NUMERO_LINHA, CPF, NOME, PORTABILIDADE, EQUIPE, DATA_ATIVACAO, DATA_VENDA, PLANO, VENDEDOR, PROPOSTA
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-        <div style="background:var(--page);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
-          <div style="font-size:.85rem;font-weight:700;margin-bottom:.3rem">Importar Conectadas</div>
-          <div style="font-size:.76rem;color:var(--text-light);margin-bottom:.9rem">Upsert pelo TELEFONE_PORTADO. Atualiza portabilidade, equipe e data de ativacao.</div>
-          <div class="form-group"><label class="fl">Modo</label>
-            <select id="inp-con-modo">
-              <option value="upsert">Upsert - atualiza existentes e insere novos</option>
-              <option value="substituir">Substituir tudo - apaga e reimporta</option>
-            </select>
-          </div>
-          <div class="upload-zone" id="upload-zone-con"
-            onclick="document.getElementById('file-input-con').click()"
-            ondragover="dragOver2(event)" ondragleave="dragLeave2()" ondrop="dropFile2(event)">
-            <div class="icon">&#x1F4C2;</div>
-            <p><strong>Clique para selecionar</strong> ou arraste o arquivo aqui</p>
-            <p style="font-size:.72rem;margin-top:.3rem">Arquivo XLS de conectadas</p>
-          </div>
-          <input type="file" id="file-input-con" accept=".xls,.xlsx,.csv" style="display:none" onchange="processarConectadas(this.files[0])">
-          <div id="upload-progress-con" style="display:none" class="upload-progress">
-            <div style="font-size:.78rem;font-weight:600" id="upload-status-con">Processando...</div>
-            <div class="upload-bar-wrap"><div class="upload-bar" id="upload-bar-con" style="width:0%"></div></div>
-            <div style="font-size:.72rem;color:var(--text-light)" id="upload-detail-con"></div>
-          </div>
-          <div id="upload-result-con" style="margin-top:.5rem"></div>
-        </div>
-        <div style="background:var(--page);border:1px solid var(--border);border-radius:10px;padding:1.2rem">
-          <div style="font-size:.85rem;font-weight:700;margin-bottom:.8rem">GROSS por Safra</div>
-          <div style="font-size:.76rem;color:var(--text-light);margin-bottom:.8rem">Total de ativacoes por mes na base de conectadas</div>
-          <div id="gross-por-mes"><div class="empty-state"><p>Carregando...</p></div></div>
-          <button class="btn btn-ghost btn-sm btn-full" style="margin-top:.8rem" onclick="carregarGrossPorMes()">Atualizar contagem</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- CONTROLE -->
-    <div id="tab-controle" class="tab-panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;flex-wrap:wrap;gap:.5rem">
-        <div class="sec-title" style="margin:0">Controle de Envio</div>
-        <div class="btn-row">
-          <select id="filt-safra" onchange="filtrarControle()" style="width:auto;padding:.38rem .65rem;font-size:.76rem"><option value="">Todas as safras</option></select>
-          <select id="filt-etapa" onchange="filtrarControle()" style="width:auto;padding:.38rem .65rem;font-size:.76rem">
-            <option value="">Todas as etapas</option><option>Preventivo</option><option>Etapa 1</option><option>Etapa 2</option>
-            <option>Etapa 3</option><option>Etapa 4</option><option>Etapa 5</option><option>Etapa 6</option><option>Etapa 7</option><option>Etapa 8</option>
-          </select>
-          <select id="filt-port" onchange="filtrarControle()" style="width:auto;padding:.38rem .65rem;font-size:.76rem">
-            <option value="">Toda portabilidade</option>
-            <option value="Portabilidade Concluida">Concluida</option>
-            <option value="nao">Nao Concluida</option>
-          </select>
-          <button class="btn btn-ghost btn-sm" onclick="exportarWpp()">Exportar WPP</button>
-        </div>
-      </div>
-      <div class="cards-row" id="cards-controle">
-        <div class="card blue"><div class="card-accent"></div><div class="card-label">Total filtrado</div><div class="card-value" id="c-total">--</div></div>
-        <div class="card green"><div class="card-accent"></div><div class="card-label">Preventivo</div><div class="card-value" id="c-prev">--</div></div>
-        <div class="card yellow"><div class="card-accent"></div><div class="card-label">Etapa 1</div><div class="card-value" id="c-e1">--</div></div>
-        <div class="card yellow"><div class="card-accent"></div><div class="card-label">Etapa 2</div><div class="card-value" id="c-e2">--</div></div>
-        <div class="card red"><div class="card-accent"></div><div class="card-label">Etapa 3</div><div class="card-value" id="c-e3">--</div></div>
-        <div class="card red"><div class="card-accent"></div><div class="card-label">Etapa 4</div><div class="card-value" id="c-e4">--</div></div>
-        <div class="card purple"><div class="card-accent"></div><div class="card-label">Etapa 5</div><div class="card-value" id="c-e5">--</div></div>
-        <div class="card purple"><div class="card-accent"></div><div class="card-label">Etapa 6</div><div class="card-value" id="c-e6">--</div></div>
-        <div class="card gray"><div class="card-accent"></div><div class="card-label">Etapa 7</div><div class="card-value" id="c-e7">--</div></div>
-        <div class="card gray"><div class="card-accent"></div><div class="card-label">Etapa 8</div><div class="card-value" id="c-e8">--</div></div>
-        <div class="card blue"><div class="card-accent"></div><div class="card-label">Valor em aberto</div><div class="card-value" id="c-valor" style="font-size:1.1rem">--</div></div>
-      </div>
-      <div class="divider"></div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>Safra</th><th>Nome</th><th>CPF</th><th>Nr Portado</th><th>Nr Linha</th><th>Fatura</th><th>Valor</th><th>Vencimento</th><th>Dias</th><th>Portabilidade</th><th>Equipe</th><th>Etapa</th></tr></thead>
-        <tbody id="tbody-controle"><tr><td colspan="12"><div class="empty-state"><p>Nenhum dado carregado</p></div></td></tr></tbody></table>
-      </div>
-      <div class="pagination"><span id="ctrl-count-text">--</span><div class="btn-row"><button class="btn btn-ghost btn-sm" id="btn-ctrl-prev" onclick="paginarControle(-1)">Anterior</button><button class="btn btn-ghost btn-sm" id="btn-ctrl-next" onclick="paginarControle(1)">Proxima</button></div></div>
-    </div>
-
-    <!-- FATURAS POR EQUIPE -->
-    <div id="tab-equipes" class="tab-panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;flex-wrap:wrap;gap:.5rem">
-        <div class="sec-title" style="margin:0">Faturas em Aberto por Equipe</div>
-        <div class="btn-row">
-          <select id="filt-equipe-safra" onchange="renderEquipes()" style="width:auto;padding:.38rem .65rem;font-size:.76rem"><option value="">Todas as safras</option></select>
-          <button class="btn btn-ghost btn-sm" onclick="exportarEquipes()">Exportar</button>
-        </div>
-      </div>
-      <div class="chart-box"><h4>Inadimplentes por equipe</h4><div id="chart-equipes" style="height:280px"></div></div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>Equipe</th><th>Clientes Inadimplentes</th><th>Valor Total em Aberto</th><th>Ticket Medio</th><th>% do Total</th></tr></thead>
-        <tbody id="tbody-equipes"><tr><td colspan="5"><div class="empty-state"><p>Carregando...</p></div></td></tr></tbody></table>
-      </div>
-    </div>
-
-    <!-- ESTORNO POR SAFRA -->
-    <div id="tab-estorno" class="tab-panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem">
-        <div class="sec-title" style="margin:0">Estorno por Safra</div>
-        <div class="btn-row">
-          <select id="sel-safra-estorno" onchange="renderEstorno()" style="width:auto;padding:.38rem .65rem;font-size:.76rem"><option value="">Selecione a safra</option></select>
-          <button class="btn btn-ghost btn-sm" onclick="renderEstorno()">Atualizar</button>
-        </div>
-      </div>
-      <div id="estorno-content"><div class="alert alert-info">Selecione uma safra acima para ver o resumo de estorno.</div></div>
-      <div class="divider"></div>
-      <div class="sec-title">Gerar CSV Siebel</div>
-      <div style="background:var(--page);border:1px solid var(--border);border-radius:10px;padding:1.2rem;max-width:480px">
-        <div style="font-size:.82rem;font-weight:700;margin-bottom:.3rem">Siebel - Consulta de Faturas RPA</div>
-        <div style="font-size:.76rem;color:var(--text-light);margin-bottom:.8rem">Gera o arquivo com CPF e numeros de acesso dos clientes em estorno para consulta no RPA. Clique quando necessario.</div>
-        <div class="form-group"><label class="fl">Safra</label><select id="sel-safra-siebel" style="margin-bottom:.6rem"><option value="">Selecione a safra</option></select></div>
-        <button class="btn btn-primary btn-full" onclick="downloadSiebel()">Gerar CSV Siebel</button>
-        <div style="font-size:.7rem;color:var(--text-light);margin-top:.4rem;text-align:center">Formato: CPF | Numero de acesso 1 | Numero de acesso 2 (repetido)</div>
-      </div>
-    </div>
-
-    <!-- RESUMO E FUNIL -->
-    <div id="tab-resumo" class="tab-panel">
-      <div class="sec-title">Funil de cobranca</div>
-      <div class="funil-row" id="funil-row"></div>
-      <div class="divider"></div>
-      <div class="sec-title">Resumo por safra</div>
-      <div id="resumo-safras"><div class="empty-state"><p>Nenhuma safra carregada</p></div></div>
-    </div>
-
-    <!-- ENVIOS DO DIA -->
-    <div id="tab-envios" class="tab-panel">
-      <div class="sec-title">Envios do Dia</div>
-      <div class="cards-row">
-        <div class="card blue"><div class="card-accent"></div><div class="card-label">A enviar hoje</div><div class="card-value" id="e-total">--</div></div>
-        <div class="card green"><div class="card-accent"></div><div class="card-label">Preventivos</div><div class="card-value" id="e-prev">--</div></div>
-        <div class="card red"><div class="card-accent"></div><div class="card-label">Em atraso (E1+)</div><div class="card-value" id="e-atr">--</div></div>
-      </div>
-      <div class="divider"></div>
-      <div id="envios-por-etapa"><div class="empty-state"><p>Carregando...</p></div></div>
-    </div>
-
-    <!-- HISTORICO PAGAMENTOS -->
-    <div id="tab-historico" class="tab-panel">
-      <div class="sec-title">Historico de Pagamentos</div>
-      <div class="cards-row">
-        <div class="card green"><div class="card-accent"></div><div class="card-label">Total pagamentos</div><div class="card-value" id="h-total">--</div></div>
-        <div class="card green"><div class="card-accent"></div><div class="card-label">Valor recuperado</div><div class="card-value" id="h-valor" style="font-size:1.1rem">--</div></div>
-        <div class="card blue"><div class="card-accent"></div><div class="card-label">Etapa c/ + baixas</div><div class="card-value" id="h-etapa" style="font-size:1rem">--</div></div>
-      </div>
-      <div class="divider"></div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>Safra</th><th>CPF</th><th>Nome</th><th>Nr Portado</th><th>Fatura</th><th>Valor</th><th>Vencimento</th><th>Etapa Pag.</th><th>Data Pag.</th></tr></thead>
-        <tbody id="tbody-historico"><tr><td colspan="9"><div class="empty-state"><p>Nenhum pagamento ainda</p></div></td></tr></tbody></table>
-      </div>
-    </div>
-
-    <!-- HISTORICO ENVIOS -->
-    <div id="tab-hist-envios" class="tab-panel">
-      <div class="sec-title">Historico de Envios por Cliente</div>
-      <div class="cards-row">
-        <div class="card blue"><div class="card-accent"></div><div class="card-label">Clientes no historico</div><div class="card-value" id="he-total">--</div></div>
-        <div class="card green"><div class="card-accent"></div><div class="card-label">Receberam mensagem</div><div class="card-value" id="he-rec">--</div></div>
-        <div class="card purple"><div class="card-accent"></div><div class="card-label">Etapa mais enviada</div><div class="card-value" id="he-etapa" style="font-size:1rem">--</div></div>
-      </div>
-      <div class="divider"></div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th>Safra</th><th>Nome</th><th>Nr Portado</th><th>CPF</th><th>Portabilidade</th><th>Equipe</th><th>Prev.</th><th>E1</th><th>E2</th><th>E3</th><th>E4</th><th>E5</th><th>E6</th><th>E7</th><th>E8</th></tr></thead>
-        <tbody id="tbody-hist-envios"><tr><td colspan="15"><div class="empty-state"><p>Nenhum envio registrado</p></div></td></tr></tbody></table>
-      </div>
-    </div>
-
-    <!-- FLUXO -->
-    <div id="tab-fluxo" class="tab-panel">
-      <div class="sec-title">Funil de Cobranca - Regras de Envio</div>
-      <div class="tbl-wrap">
-        <table><thead><tr><th></th><th>Dias de Atraso</th><th>Etapa</th><th>Tipo</th><th>Portabilidade</th></tr></thead>
-        <tbody>
-          <tr><td>&#x1F7E2;</td><td>D-2 antes do vencimento</td><td>Preventivo</td><td>Lembrete</td><td>Todos</td></tr>
-          <tr><td>&#x26AA;</td><td>0 a 6 dias</td><td>--</td><td>Aguardar</td><td>--</td></tr>
-          <tr><td>&#x1F7E1;</td><td>7 a 10 dias</td><td>Etapa 1</td><td>Cobranca</td><td>Todos</td></tr>
-          <tr><td>&#x1F7E1;</td><td>11 a 15 dias</td><td>Etapa 2</td><td>Cobranca</td><td>Todos</td></tr>
-          <tr><td>&#x1F534;</td><td>16 a 23 dias</td><td>Etapa 3</td><td>Cobranca</td><td>Todos</td></tr>
-          <tr><td>&#x1F534;</td><td>24 a 30 dias</td><td>Etapa 4</td><td>Cobranca</td><td>Todos</td></tr>
-          <tr><td>&#x1F7E3;</td><td>31 a 42 dias</td><td>Etapa 5</td><td>Alto Potencial</td><td>Port. Concluida</td></tr>
-          <tr><td>&#x1F7E3;</td><td>43 a 50 dias</td><td>Etapa 6</td><td>Alto Potencial</td><td>Port. Concluida</td></tr>
-          <tr><td>&#x26AB;</td><td>51 a 62 dias</td><td>Etapa 7</td><td>Alto Potencial</td><td>Port. Concluida</td></tr>
-          <tr><td>&#x26AB;</td><td>63 a 70 dias</td><td>Etapa 8</td><td>Alto Potencial</td><td>Port. Concluida</td></tr>
-        </tbody></table>
-      </div>
-      <div class="divider"></div>
-      <div style="font-size:.82rem;color:var(--text-light);line-height:1.85">
-        <b style="color:var(--text)">Regras de cruzamento com conectadas:</b><br>
-        Numero de acesso da safra cruza com TELEFONE_PORTADO ou NUMERO_LINHA da tabela conectadas<br>
-        Portabilidade Concluida: apenas quando PORTABILIDADE = "Portabilidade Concluida"<br>
-        Nao Concluida: "Portabilidade nao Concluida", "Portabilidade Pendente" ou nao encontrado<br>
-        Etapas 5-8 sao enviadas exclusivamente para Portabilidade Concluida<br>
-        GROSS = total de ativacoes do mes na tabela conectadas (DATA_ATIVACAO)
-      </div>
-    </div>
+    <button onclick="salvarConfig()">Salvar</button>
+    <button onclick="fecharModal()">Fechar</button>
 
   </div>
 </div>
 
 <script>
 
-// CONFIG
-const ETAPA_ORDER = ['Preventivo','Etapa 1','Etapa 2','Etapa 3','Etapa 4','Etapa 5','Etapa 6','Etapa 7','Etapa 8'];
-const ETAPA_CORES = {'Preventivo':'#16A34A','Etapa 1':'#D97706','Etapa 2':'#D97706','Etapa 3':'#DC2626','Etapa 4':'#DC2626','Etapa 5':'#7C3AED','Etapa 6':'#7C3AED','Etapa 7':'#4B5563','Etapa 8':'#4B5563'};
-const MESES_PT = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const MESES_ALT = ['janeiro','fevereiro','marco','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
-const PG = 50, RPG = 30;
-const INTERVALO_ENVIO = 2; // dias entre envios
+/* =========================
+   CONFIG
+========================= */
 
-let sb = null, webhookUrl = '';
-let dadosControle = [], dadosRespostas = [], dadosHistorico = [], dadosHistEnvios = [], dadosSnapshots = [];
-let ctrlPage = 0, respPage = 0;
+let supabase = null;
 
-// INIT
-document.addEventListener('DOMContentLoaded', () => {
-  atualizarRelogio();
-  setInterval(atualizarRelogio, 1000);
-  const url = localStorage.getItem('sb_url');
-  const key = localStorage.getItem('sb_key');
-  webhookUrl = localStorage.getItem('n8n_webhook') || '';
-  if (url && key) {
-    document.getElementById('inp-url').value = url;
-    document.getElementById('inp-key').value = key;
-    conectarSupabase(true);
+function salvarConfig() {
+  const url = document.getElementById("url").value;
+  const key = document.getElementById("key").value;
+  const webhook = document.getElementById("webhook").value;
+
+  localStorage.setItem("supabase_url", url);
+  localStorage.setItem("supabase_key", key);
+  localStorage.setItem("webhook", webhook);
+
+  conectarSupabase();
+  setStatus("Configuração salva", "green");
+}
+
+function conectarSupabase() {
+  const url = localStorage.getItem("supabase_url");
+  const key = localStorage.getItem("supabase_key");
+
+  if (!url || !key) {
+    setStatus("Configure o Supabase", "red");
+    return;
   }
-  if (webhookUrl) document.getElementById('inp-webhook').value = webhookUrl;
+
+  supabase = window.supabase.createClient(url, key);
+}
+
+/* =========================
+   DASHBOARD
+========================= */
+
+async function carregarDados() {
+  if (!supabase) {
+    setStatus("Sem conexão com banco", "red");
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("faturas")
+    .select("*");
+
+  if (error) {
+    setStatus(error.message, "red");
+    return;
+  }
+
+  montarGrafico(data);
+}
+
+function montarGrafico(dados) {
+  const valores = dados.map(d => d.valor);
+  const nomes = dados.map(d => d.nome);
+
+  const trace = {
+    x: nomes,
+    y: valores,
+    type: "bar"
+  };
+
+  Plotly.newPlot("grafico", [trace]);
+}
+
+/* =========================
+   EXCEL
+========================= */
+
+function uploadExcel() {
+  const file = document.getElementById("fileInput").files[0];
+
+  if (!file) return;
+
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: "array" });
+
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(sheet);
+
+    for (let item of json) {
+      await salvarFatura(item);
+    }
+
+    setStatus("Excel importado", "green");
+    carregarDados();
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+/* =========================
+   SUPABASE INSERT
+========================= */
+
+async function salvarFatura(item) {
+  if (!supabase) return;
+
+  await supabase.from("faturas").insert([
+    {
+      nome: item.nome || item.Nome,
+      valor: item.valor || item.Valor
+    }
+  ]);
+}
+
+/* =========================
+   N8N WEBHOOK
+========================= */
+
+async function enviarWebhook(dados) {
+  const url = localStorage.getItem("webhook");
+
+  if (!url) return;
+
+  await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(dados)
+  });
+}
+
+/* =========================
+   UI
+========================= */
+
+function abrirModal() {
+  document.getElementById("modal").style.display = "block";
+}
+
+function fecharModal() {
+  document.getElementById("modal").style.display = "none";
+}
+
+function setStatus(msg, color) {
+  const el = document.getElementById("status");
+  el.innerText = msg;
+  el.style.color = color;
+}
+
+/* =========================
+   INIT
+========================= */
+
+document.addEventListener("DOMContentLoaded", () => {
+  conectarSupabase();
+  carregarDados();
 });
 
-function atualizarRelogio() {
-  const n = new Date();
-  document.getElementById('sb-datetime').textContent = n.toLocaleString('pt-BR');
-  document.getElementById('tb-date').textContent = n.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'});
-}
-
-// MODAL
-function abrirModal() { document.getElementById('modal-overlay').classList.add('open'); }
-function fecharModal() { document.getElementById('modal-overlay').classList.remove('open'); }
-function salvarWebhook() {
-  webhookUrl = document.getElementById('inp-webhook').value.trim();
-  localStorage.setItem('n8n_webhook', webhookUrl);
-  alert('Webhook salvo!');
-}
-
-// SUPABASE
-function conectarSupabase(silencioso) {
-  const url = document.getElementById('inp-url').value.trim();
-  const key = document.getElementById('inp-key').value.trim();
-  if (!url || !key) { if (!silencioso) alert('Preencha URL e Key.'); return; }
-  try {
-    sb = window.supabase.createClient(url, key);
-    localStorage.setItem('sb_url', url);
-    localStorage.setItem('sb_key', key);
-    setConectado(true);
-    fecharModal();
-    recarregarTudo();
-  } catch(e) { setConectado(false); console.error(e); }
-}
-
-function setConectado(ok) {
-  document.getElementById('dot-conn').className = 'sb-dot' + (ok ? ' ok' : '');
-  document.getElementById('sb-conn-label').textContent = ok ? 'Conectado' : 'Desconectado';
-  document.getElementById('sb-conn-label').style.color = ok ? '#16A34A' : '';
-  const badge = document.getElementById('tb-conn-badge');
-  badge.className = 'conn-badge ' + (ok ? 'ok' : 'err');
-  badge.textContent = ok ? 'Conectado' : 'Desconectado';
-  const banner = document.getElementById('banner-disconnected');
-  if (ok) banner.classList.remove('show'); else banner.classList.add('show');
-  const ms = document.getElementById('modal-status');
-  if (ms) ms.innerHTML = ok ? '<div class="alert alert-ok">Conectado com sucesso!</div>' : '';
-}
-
-// TABS
-function switchTab(id, navId) {
-  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.sb-nav a').forEach(a => a.classList.remove('active'));
-  const panel = document.getElementById('tab-' + id);
-  const nav = document.getElementById(navId);
-  if (panel) panel.classList.add('active');
-  if (nav) nav.classList.add('active');
-  if (id === 'resumo') renderResumo();
-  if (id === 'envios') renderEnviosDia();
-  if (id === 'respostas') filtrarRespostas();
-  if (id === 'equipes') renderEquipes();
-  if (id === 'estorno') renderEstorno();
-}
-
-// CARREGAR TUDO
-async function recarregarTudo() {
-  if (!sb) return;
-  mostrarLoading('Carregando dados...');
-  await Promise.all([
-    carregarControle(),
-    carregarHistorico(),
-    carregarHistEnvios(),
-    carregarRespostasData(),
-    carregarSnapshots()
-  ]);
-  atualizarDashboard();
-  ocultarLoading();
-}
-
-// SNAPSHOTS
-async function carregarSnapshots() {
-  if (!sb) return;
-  try {
-    const {data,error} = await sb.from('snapshots_estorno').select('*').order('DATA',{ascending:true}).limit(500);
-    if(error){console.warn('snapshots_estorno:',error.message);dadosSnapshots=[];return;}
-    dadosSnapshots = data || [];
-  } catch(e) {console.warn('snapshots erro:',e.message);dadosSnapshots=[];}
-}
-
-async function salvarSnapshot(safra, pctEstorno, totalEstorno, gross) {
-  if (!sb) return;
-  const hoje = new Date().toISOString().slice(0,10);
-  try { await sb.from('snapshots_estorno').upsert({
-    safra, DATA: hoje,
-    PCT_ESTORNO: parseFloat(pctEstorno),
-    ESTORNO: totalEstorno,
-    gross
-  }, {onConflict:'SAFRA,DATA'}); } catch(e) {}
-}
-
-// REGRAS DE ESTORNO
-
-// Classifica o tipo de fatura do cliente usando as duas colunas de status
-function classificarTipoFatura(r) {
-  const s1 = (r['STATUS 1\u00aa FATURA'] || r['STATUS 1 FATURA'] || '').toLowerCase();
-  const s2 = (r['STATUS 2\u00aa FATURA'] || r['STATUS 2 FATURA'] || '').toLowerCase();
-  const temF2 = s2 !== '' && s2 !== 'null';
-
-  if (!temF2) {
-    // Apenas 1 fatura
-    if (s1 === 'paga' || s1 === 'em negociacao' || s1 === 'parcelada' || s1 === 'ordem pagto' || s1 === 'pagamento cartao de credito') return '1 FATURA PAGA';
-    if (s1 === 'aberta') return '1 FATURA ABERTA';
-    return 'SEM ESTORNO';
-  } else {
-    // 2 faturas
-    const f1paga = s1 !== 'aberta' && s1 !== '';
-    const f2paga = s2 !== 'aberta' && s2 !== '';
-    const f1aberta = s1 === 'aberta';
-    const f2aberta = s2 === 'aberta';
-    if (!f1aberta && !f2aberta) return '2 FATURAS - 2 PGS';
-    if (f1aberta && f2aberta) return '2 FATURAS (2 ABERTA)';
-    if (!f1aberta && f2aberta) return '2 FATURAS (1 PAGA 2 ABERTA)';
-    if (f1aberta && !f2aberta) return '2 FATURAS (1 ABERTO 2 PAGA)';
-    return 'SEM ESTORNO';
-  }
-}
-
-function classificarEstorno(cliente, safraDate) {
-  if ((cliente['STATUS ACESSO'] || '') !== 'Ativo') {
-    return {estorno: false, tipo: 'CANCELADO'};
-  }
-  if (!safraDate) return {estorno: false, tipo: 'SEM DATA SAFRA'};
-
-  const fechamento = getFechamento(safraDate);
-  const limite2fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 2, 1);
-  const limite1fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 1, 1);
-
-  const vencStr = cliente['VENCIMENTO'] || '';
-  const venc = vencStr ? new Date(vencStr) : null;
-
-  // Tipo de fatura baseado nas colunas STATUS 1\u00aa FATURA e STATUS 2\u00aa FATURA
-  const tipoFat = classificarTipoFatura(cliente);
-  const temAberta = tipoFat.includes('ABERTA') || tipoFat === '1 FATURA ABERTA';
-
-  if (!temAberta) return {estorno: false, tipo: tipoFat};
-  if (!venc) return {estorno: false, tipo: 'SEM ESTORNO'};
-
-  const vencMes = new Date(venc.getFullYear(), venc.getMonth(), 1);
-
-  if (vencMes <= limite2fat) return {estorno: true, tipo: tipoFat};
-  if (vencMes.getTime() === limite1fat.getTime()) return {estorno: true, tipo: tipoFat};
-  return {estorno: false, tipo: 'SEM ESTORNO'};
-}
-
-function parseSafra(safraStr) {
-  if (!safraStr) return null;
-  const upper = (safraStr + '').toUpperCase()
-    .replace('MAR\u00c7O','MARCO').replace('\u00c7','C');
-  const nomes = ['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO',
-                 'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
-  for (let i = 0; i < nomes.length; i++) {
-    if (upper.includes(nomes[i])) {
-      const anoMatch = safraStr.match(/\d{4}/);
-      const ano = anoMatch ? parseInt(anoMatch[0]) : new Date().getFullYear();
-      return new Date(ano, i, 1);
-    }
-  }
-  return null;
-}
-
-function getFechamento(safraDate) {
-  if (!safraDate) return null;
-  return new Date(safraDate.getFullYear(), safraDate.getMonth() + 3, 1);
-}
-
-function classificarEstorno(cliente, safraDate) {
-  // Tudo diferente de Ativo = cancelado, nao conta para disparo
-  if ((cliente['STATUS ACESSO'] || '') !== 'Ativo') {
-    return {estorno: false, tipo: 'CANCELADO'};
-  }
-
-  if (!safraDate) return {estorno: false, tipo: 'SEM DATA SAFRA'};
-
-  const fechamento = getFechamento(safraDate);
-  // Limite para 2 faturas: venc <= fechamento - 2 meses
-  const limite2fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 2, 1);
-  // Limite para 1 fatura: venc = fechamento - 1 mes
-  const limite1fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 1, 1);
-
-  const vencStr = cliente['VENCIMENTO'] || '';
-  const venc = vencStr ? new Date(vencStr) : null;
-  const statusFat = (cliente['STATUS PAGAMENTO'] || '').toLowerCase();
-
-  if (!venc || statusFat !== 'aberta') {
-    if (statusFat === 'paga') return {estorno: false, tipo: '1 FATURA PAGA'};
-    return {estorno: false, tipo: 'SEM ESTORNO'};
-  }
-
-  const vencMes = new Date(venc.getFullYear(), venc.getMonth(), 1);
-
-  if (vencMes <= limite2fat) return {estorno: true, tipo: '2 FATURAS (ABERTA)'};
-  if (vencMes.getTime() === limite1fat.getTime()) return {estorno: true, tipo: '1 FATURA ABERTA'};
-  return {estorno: false, tipo: 'SEM ESTORNO'};
-}
-
-function calcularEstornoPorSafra(safra) {
-  const dados = dadosControle.filter(r => !safra || r['SAFRA'] === safra);
-  const safraDate = parseSafra(safra || (dados[0] && dados[0].SAFRA));
-  const fechamento = getFechamento(safraDate);
-
-  // GROSS = total de ativacoes do mes na tabela conectadas (via ultimo snapshot salvo)
-  const ultimoSnap = dadosSnapshots.filter(s=>s['SAFRA']===safra).sort((a,b)=>a['DATA']>b['DATA']?-1:1)[0];
-  const gross = ultimoSnap&&ultimoSnap['GROSS'] ? ultimoSnap['GROSS'] : dados.length;
-  const ativos = dados.filter(r => r['STATUS ACESSO'] === 'Ativo');
-  const cancelados = dados.filter(r => r['STATUS ACESSO'] !== 'Ativo');
-
-  const det = {
-    'SEM ESTORNO': 0,
-    '1 FATURA PAGA': 0,
-    '1 FATURA ABERTA': 0,
-    '2 FATURAS - 2 PGS': 0,
-    '2 FATURAS (2 ABERTA)': 0,
-    '2 FATURAS (1 PAGA 2 ABERTA)': 0,
-    '2 FATURAS (1 ABERTO 2 PAGA)': 0,
-    'CANCELADO': 0
-  };
-
-  let estornoClientes = [], semEstorno = [];
-
-  ativos.forEach(r => {
-    const res = classificarEstorno(r, safraDate);
-    // Contabiliza pelo tipo da fatura (independente de ser estorno ou nao)
-    const tipoFat = classificarTipoFatura(r);
-    if (res.estorno) estornoClientes.push(r);
-    else semEstorno.push(r);
-    if (det[tipoFat] !== undefined) det[tipoFat]++;
-    else det['SEM ESTORNO']++;
-  });
-
-  det['CANCELADO'] = cancelados.length;
-
-  const metaEstorno = Math.floor(gross * 0.38);
-  const reducao = Math.max(0, estornoClientes.length - metaEstorno);
-  const pctEstorno = gross > 0 ? (estornoClientes.length / gross * 100).toFixed(1) : '0';
-  const pctAtivos = gross > 0 ? (ativos.length / gross * 100).toFixed(1) : '0';
-  const pctCanc = gross > 0 ? (cancelados.length / gross * 100).toFixed(1) : '0';
-  const cobrar = ativos.filter(r => r['ETAPA'] && (r['STATUS PAGAMENTO']||'').toLowerCase() === 'aberta');
-
-  // Evolucao: diferenca entre snapshot atual e anterior
-  const snaps = dadosSnapshots.filter(s => s['SAFRA'] === safra).sort((a,b) => a.data_snapshot > b.data_snapshot ? 1 : -1);
-  let evolucao = null;
-  if (snaps.length >= 2) {
-    const ultimo = snaps[snaps.length-1].pct_estorno;
-    const penultimo = snaps[snaps.length-2].pct_estorno;
-    evolucao = (parseFloat(pctEstorno) - penultimo).toFixed(1);
-  }
-
-  return {
-    gross, ativos: ativos.length, cancelados: cancelados.length,
-    pctAtivos, pctCanc,
-    estornoTratado: estornoClientes.length, estornoClientes,
-    semEstorno: semEstorno.length, metaEstorno, reducao,
-    pctEstorno, pctMetaEstorno: '38',
-    cobrar: cobrar.length, det, fechamento, safraDate,
-    evolucao, snaps
-  };
-}
-
-// RENDERIZAR ABA ESTORNO
-function renderEstorno() {
-  const sel = document.getElementById('sel-safra-estorno');
-  const safra = sel ? sel.value : '';
-  if (!safra) {
-    const el = document.getElementById('estorno-content');
-    if (el) el.innerHTML = '<div class="alert alert-info">Selecione uma safra para ver o resumo de estorno.</div>';
-    return;
-  }
-  const res = calcularEstornoPorSafra(safra);
-  const el = document.getElementById('estorno-content');
-  if (!el) return;
-
-  const pctNum = parseFloat(res.pctEstorno);
-  const pctCor = pctNum > 38 ? '#DC2626' : '#16A34A';
-  const fechStr = res.fechamento ? res.fechamento.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : '--';
-  const pagsSafra = dadosHistorico.filter(r => r['SAFRA'] === safra);
-  const pctBaixas = res.estornoTratado > 0 ? (pagsSafra.length / res.estornoTratado * 100).toFixed(1) : '0';
-  const pctReducao = res.estornoTratado > 0 ? (res.reducao / res.estornoTratado * 100).toFixed(1) : '0';
-
-  const evoHtml = res.evolucao !== null
-    ? '<span style="color:' + (parseFloat(res.evolucao) <= 0 ? '#16A34A' : '#DC2626') + ';font-size:1.4rem;font-weight:700">' +
-      (parseFloat(res.evolucao) > 0 ? '+' : '') + res.evolucao + 'pp</span>' +
-      '<div style="font-size:.72rem;color:var(--text-light);margin-top:.2rem">vs upload anterior</div>'
-    : '<span style="font-size:1rem;color:var(--text-light)">Aguardando 2 uploads</span>';
-
-  el.innerHTML =
-    '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">' +
-      '<span style="font-size:.9rem;font-weight:700">Safra: ' + safra + '</span>' +
-      '<span style="font-size:.75rem;color:var(--text-light);background:var(--gray-bg);padding:2px 10px;border-radius:20px">Fechamento: ' + fechStr + '</span>' +
-    '</div>' +
-
-    // Cards principais - igual ao Streamlit
-    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:.7rem;margin-bottom:1.2rem">' +
-      '<div class="card blue"><div class="card-accent"></div>' +
-        '<div class="card-label">Gross</div>' +
-        '<div class="card-value">' + fmt(res.gross) + '</div>' +
-        '<div class="card-sub" style="line-height:1.7">' +
-          '<span style="color:#16A34A">Ativos: ' + fmt(res.ativos) + ' (' + res.pctAtivos + '%)</span><br>' +
-          '<span style="color:#DC2626">Canc: ' + fmt(res.cancelados) + ' (' + res.pctCanc + '%)</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="card red"><div class="card-accent"></div>' +
-        '<div class="card-label">% Estorno Atual</div>' +
-        '<div class="card-value" style="color:' + pctCor + ';font-size:2rem">' + res.pctEstorno + '%</div>' +
-        '<div class="card-sub">' + fmt(res.estornoTratado) + ' clientes em risco<br>' +
-          '<span style="color:' + (pctNum <= 38 ? '#16A34A' : '#D97706') + ';font-size:.7rem">' +
-          (pctNum <= 38 ? 'abaixo da meta' : 'acima da meta') + '</span>' +
-        '</div>' +
-      '</div>' +
-      '<div class="card yellow"><div class="card-accent"></div>' +
-        '<div class="card-label">Meta de Estorno</div>' +
-        '<div class="card-value" style="color:#D97706;font-size:2rem">38%</div>' +
-        '<div class="card-sub">Max. ' + fmt(res.metaEstorno) + ' clientes</div>' +
-      '</div>' +
-      '<div class="card green"><div class="card-accent"></div>' +
-        '<div class="card-label">Baixas (Pagamentos)</div>' +
-        '<div class="card-value" style="color:#16A34A">' + fmt(pagsSafra.length) + '</div>' +
-        '<div class="card-sub">' + pctBaixas + '% do estorno</div>' +
-      '</div>' +
-      '<div class="card purple"><div class="card-accent"></div>' +
-        '<div class="card-label">Reducao Necessaria</div>' +
-        '<div class="card-value" style="color:#7C3AED">' + fmt(res.reducao) + '</div>' +
-        '<div class="card-sub">' + pctReducao + '% do estorno atual</div>' +
-      '</div>' +
-      '<div class="card blue"><div class="card-accent"></div>' +
-        '<div class="card-label">Evolucao</div>' +
-        '<div style="padding:.3rem 0">' + evoHtml + '</div>' +
-      '</div>' +
-    '</div>' +
-
-    // Grafico de evolucao de estorno
-    (res.snaps.length > 1 ?
-      '<div class="chart-box" style="margin-bottom:1rem">' +
-        '<h4>Evolucao do % de estorno</h4>' +
-        '<div id="chart-evolucao" style="height:180px"></div>' +
-      '</div>' : '') +
-
-    // Detalhamento de faturas - igual ao Streamlit
-    '<div style="background:var(--page);border:1px solid var(--border);border-radius:8px;overflow:hidden">' +
-      '<div style="padding:.6rem 1rem;background:#F9FAFB;border-bottom:1px solid var(--border);font-size:.72rem;font-weight:700;color:var(--text-light);cursor:pointer" onclick="toggleDet()">' +
-        'Ver detalhamento de faturas' +
-      '</div>' +
-      '<div id="det-faturas"></div>' +
-    '</div>' +
-
-    // Botoes de acao
-    '<div style="display:flex;gap:.7rem;margin-top:1rem;flex-wrap:wrap">' +
-      '<div style="flex:1;min-width:200px">' +
-        '<label class="fl">Safra para Siebel</label>' +
-        '<select id="sel-safra-siebel-local" style="margin-bottom:.4rem"><option value="' + safra + '">' + safra + '</option></select>' +
-        '<button class="btn btn-primary btn-full" onclick="downloadSiebel(\'' + safra + '\')">Gerar CSV Siebel (' + fmt(res.estornoClientes.length) + ' clientes)</button>' +
-        '<div style="font-size:.7rem;color:var(--text-light);margin-top:.3rem">Clique quando precisar consultar no RPA</div>' +
-      '</div>' +
-    '</div>';
-
-  // Renderizar detalhamento
-  renderDetFaturas(res);
-
-  // Grafico evolucao
-  if (res.snaps.length > 1) {
-    setTimeout(() => {
-      const snapDatas = res.snaps.map(s => s['DATA']);
-      const snapVals = res.snaps.map(s => parseFloat(s['PCT_ESTORNO']));
-      Plotly.newPlot('chart-evolucao', [
-        {x: snapDatas, y: snapVals, type:'scatter', mode:'lines+markers',
-         line: {color:'#DC2626', width:2},
-         marker: {color:'#DC2626', size:6},
-         name: '% Estorno'},
-        {x: snapDatas, y: snapDatas.map(() => 38),
-         type:'scatter', mode:'lines',
-         line: {color:'#D97706', width:1, dash:'dash'},
-         name: 'Meta 38%'}
-      ], {
-        paper_bgcolor:'#fff', plot_bgcolor:'#fff',
-        font: {family:'Inter', color:'#6B7280', size:11},
-        margin: {l:35,r:10,t:10,b:30}, height:180,
-        xaxis: {gridcolor:'#F3F4F6', tickformat:'%d/%m'},
-        yaxis: {gridcolor:'#F3F4F6', ticksuffix:'%', range:[30,60]},
-        legend: {font:{size:10}},
-        showlegend: true
-      }, {displayModeBar:false});
-    }, 100);
-  }
-}
-
-function renderDetFaturas(res) {
-  const total = res.ativos || 1;
-  const linhas = [
-    {label:'SEM ESTORNO', val: res.det['SEM ESTORNO']||0, estorno:false},
-    {label:'1 FATURA PAGA', val: res.det['1 FATURA PAGA']||0, estorno:false},
-    {label:'1 FATURA ABERTA', val: res.det['1 FATURA ABERTA']||0, estorno:true},
-    {label:'2 FATURAS - 2 PGS', val: res.det['2 FATURAS - 2 PGS']||0, estorno:false},
-    {label:'2 FATURAS (2 ABERTA)', val: res.det['2 FATURAS (2 ABERTA)']||0, estorno:true},
-    {label:'2 FATURAS (1 PAGA 2 ABERTA)', val: res.det['2 FATURAS (1 PAGA 2 ABERTA)']||0, estorno:true},
-    {label:'2 FATURAS (1 ABERTO 2 PAGA)', val: res.det['2 FATURAS (1 ABERTO 2 PAGA)']||0, estorno:true},
-  ];
-  const detEl = document.getElementById('det-faturas');
-  if (detEl) {
-    detEl.innerHTML = linhas.map(l => {
-      const pct = total > 0 ? (l.val/total*100).toFixed(1) : '0';
-      const cor = l.estorno ? '#DC2626' : '#16A34A';
-      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem .9rem;border-bottom:1px solid var(--border)">' +
-        '<div style="display:flex;align-items:center;gap:.6rem">' +
-          '<div style="width:8px;height:8px;border-radius:50%;background:' + cor + '"></div>' +
-          '<span style="font-size:.8rem">' + l.label + '</span>' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:1.2rem">' +
-          '<span style="font-size:.75rem;color:var(--text-light);min-width:40px;text-align:right">' + pct + '%</span>' +
-          '<span style="font-weight:700;color:' + cor + ';font-family:monospace;min-width:55px;text-align:right">' + fmt(l.val) + '</span>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-  }
-}
-
-function toggleDet() {
-  const el = document.getElementById('det-faturas');
-  if (el) el.style.display = el.style.display === 'none' ? '' : 'none';
-}
-
-// DOWNLOAD SIEBEL
-function downloadSiebel(safra) {
-  if (!safra) safra = document.getElementById('sel-safra-siebel') ? document.getElementById('sel-safra-siebel').value : '';
-  if (!safra) { alert('Selecione a safra.'); return; }
-  const safraDate = parseSafra(safra);
-  const clientes = dadosControle.filter(r => {
-    if (r['SAFRA'] !== safra) return false;
-    const res = classificarEstorno(r, safraDate);
-    return res.estorno;
-  });
-  if (!clientes.length) { alert('Nenhum cliente elegivel para Siebel.'); return; }
-
-  // Cabecalhos completos do modelo Siebel (21 colunas)
-  const headers = [
-    'Cpf',
-    'Numero de acesso 1','Numero de acesso 2','Numero de acesso 3','Numero de acesso 4',
-    'Numero de acesso 5','Numero de acesso 6','Numero de acesso 7','Numero de acesso 8',
-    'Numero de acesso 9','Numero de acesso 10',
-    'Codigo externo 1','Codigo externo 2','Codigo externo 3','Codigo externo 4',
-    'Codigo externo 5','Codigo externo 6','Codigo externo 7','Codigo externo 8',
-    'Codigo externo 9','Codigo externo 10'
-  ];
-
-  const linhas = [headers.join(',')];
-  clientes.forEach(r => {
-    const cpf = (r['CPF']||'').replace(/\D/g,'');
-    const acesso = (r['NUMERO DE ACESSO']||r['NUMERO PORTADO']||'').replace(/\D/g,'');
-    // Preenche CPF, acesso 1, acesso 2 (repetido); restante vazio
-    const row = [cpf, acesso, acesso, '', '', '', '', '', '', '', '',
-                 '', '', '', '', '', '', '', '', '', ''];
-    linhas.push(row.join(','));
-  });
-
-  download('\ufeff' + linhas.join('\n'), 'siebel_' + safra.replace(/\s/g,'_') + '_' + hoje() + '.csv', 'text/csv;charset=utf-8');
-  alert('Siebel exportado: ' + fmt(clientes.length) + ' clientes.');
-}
-
-// CONTROLE_ENVIO
-async function carregarControle() {
-  if (!sb) return;
-  let todos = [], offset = 0;
-  while (true) {
-    const {data} = await sb.from('controle_envio').select('*').range(offset, offset+999);
-    if (!data||!data.length) break;
-    todos.push(...data);
-    if (data.length < 1000) break;
-    offset += 1000;
-  }
-  dadosControle = todos;
-  const safras = [...new Set(todos.map(r => r['SAFRA']).filter(Boolean))].sort();
-  ['filt-safra','filt-equipe-safra','sel-safra-download','sel-safra-estorno','sel-safra-siebel'].forEach(id => {
-    const sel = document.getElementById(id);
-    if (sel) sel.innerHTML = '<option value="">Selecione a safra</option>' + safras.map(s => '<option>' + s + '</option>').join('');
-  });
-  renderControle();
-}
-
-function filtrarControle() { ctrlPage = 0; renderControle(); }
-
-function getDadosFiltrados() {
-  const safra = document.getElementById('filt-safra').value;
-  const etapa = document.getElementById('filt-etapa').value;
-  const port = document.getElementById('filt-port').value;
-  return dadosControle.filter(r => {
-    if (safra && r['SAFRA'] !== safra) return false;
-    if (etapa && r['ETAPA'] !== etapa) return false;
-    if (port === 'Portabilidade Concluida' && r['PORTABILIDADE'] !== 'Portabilidade Concluida' && r['PORTABILIDADE'] !== 'Concluida') return false;
-    if (port === 'nao' && r['PORTABILIDADE'] === 'Portabilidade Concluida') return false;
-    return true;
-  });
-}
-
-function renderControle() {
-  const data = getDadosFiltrados();
-  const page = data.slice(ctrlPage*PG, (ctrlPage+1)*PG);
-  const prev = data.filter(r => r['ETAPA']==='Preventivo').length;
-  const urg = data.filter(r => ['Etapa 3','Etapa 4','Etapa 5','Etapa 6','Etapa 7','Etapa 8'].includes(r['ETAPA'])).length;
-  const val = data.reduce((s,r) => s+(parseFloat(r['VALOR'])||0), 0);
-  setEl('c-total',fmt(data.length));
-  setEl('c-prev',fmt(data.filter(r=>r['ETAPA']==='Preventivo').length));
-  setEl('c-e1',fmt(data.filter(r=>r['ETAPA']==='Etapa 1').length));
-  setEl('c-e2',fmt(data.filter(r=>r['ETAPA']==='Etapa 2').length));
-  setEl('c-e3',fmt(data.filter(r=>r['ETAPA']==='Etapa 3').length));
-  setEl('c-e4',fmt(data.filter(r=>r['ETAPA']==='Etapa 4').length));
-  setEl('c-e5',fmt(data.filter(r=>r['ETAPA']==='Etapa 5').length));
-  setEl('c-e6',fmt(data.filter(r=>r['ETAPA']==='Etapa 6').length));
-  setEl('c-e7',fmt(data.filter(r=>r['ETAPA']==='Etapa 7').length));
-  setEl('c-e8',fmt(data.filter(r=>r['ETAPA']==='Etapa 8').length));
-  setEl('c-valor',fmtBRL(val));
-  const tbody = document.getElementById('tbody-controle');
-  if (!page.length) {
-    tbody.innerHTML = '<tr><td colspan="12"><div class="empty-state"><p>Nenhum registro</p></div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = page.map(r => {
-    const isConcluida = r['PORTABILIDADE']==='Portabilidade Concluida'||r['PORTABILIDADE']==='Concluida';
-    const portCls = isConcluida ? 'pill-green' : 'pill-red';
-    const portLabel = isConcluida ? 'Concluida' : 'Nao Concluida';
-    const safraDate = parseSafra(r['SAFRA']);
-    const {estorno} = classificarEstorno(r, safraDate);
-    return '<tr>' +
-      '<td>' + (r['SAFRA']||'') + '</td><td>' + (r['NOME']||'') + '</td>' +
-      '<td class="mono">' + (r['CPF']||'') + '</td>' +
-      '<td class="mono">' + (r['NUMERO PORTADO']||'') + '</td>' +
-      '<td class="mono">' + (r['NUMERO LINHA']||'') + '</td>' +
-      '<td>' + (r['FATURA']||'') + '</td>' +
-      '<td class="mono">' + fmtBRL(r['VALOR']) + '</td>' +
-      '<td>' + fmtData(r['VENCIMENTO']) + '</td>' +
-      '<td>' + (r['DIAS ATRASO']||'') + '</td>' +
-      '<td><span class="pill ' + portCls + '">' + portLabel + '</span></td>' +
-      '<td>' + (r['EQUIPE']||'') + '</td>' +
-      '<td>' + (r['ETAPA'] ? '<span style="color:' + (ETAPA_CORES[r['ETAPA']]||'#111') + ';font-weight:600">' + r['ETAPA'] + '</span>' : '') + '</td>' +
-      '</tr>';
-  }).join('');
-  const tot=data.length, ini=ctrlPage*PG+1, fim=Math.min((ctrlPage+1)*PG,tot);
-  document.getElementById('ctrl-count-text').textContent = 'Mostrando ' + ini + ' a ' + fim + ' de ' + fmt(tot);
-  document.getElementById('btn-ctrl-prev').disabled = ctrlPage===0;
-  document.getElementById('btn-ctrl-next').disabled = fim>=tot;
-}
-function paginarControle(dir) { ctrlPage=Math.max(0,ctrlPage+dir); renderControle(); }
-
-// EQUIPES
-function renderEquipes() {
-  const safraSel = (document.getElementById('filt-equipe-safra')||{}).value || '';
-  const safraDate = parseSafra(safraSel);
-  const data = dadosControle.filter(r => {
-    if (safraSel && r['SAFRA']!==safraSel) return false;
-    return classificarEstorno(r, safraDate).estorno;
-  });
-  const equipes = {};
-  data.forEach(r => {
-    const eq = r['EQUIPE']||'(sem equipe)';
-    if (!equipes[eq]) equipes[eq] = {clientes:0, valor:0};
-    equipes[eq].clientes++;
-    equipes[eq].valor += (parseFloat(r['VALOR'])||0);
-  });
-  const lista = Object.entries(equipes).sort((a,b) => b[1].clientes-a[1].clientes);
-  const totalCli = lista.reduce((s,[,v]) => s+v.clientes, 0)||1;
-  if (typeof Plotly!=='undefined'&&lista.length) {
-    Plotly.newPlot('chart-equipes',[{
-      y:lista.map(([eq])=>eq).reverse(), x:lista.map(([,v])=>v.clientes).reverse(),
-      type:'bar',orientation:'h',marker:{color:'#DC2626'},
-      text:lista.map(([,v])=>fmt(v.clientes)).reverse(), textposition:'outside'
-    }],{paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'Inter',color:'#6B7280',size:11},
-      margin:{l:160,r:60,t:10,b:30},height:280,
-      xaxis:{gridcolor:'#F3F4F6'},yaxis:{gridcolor:'#F3F4F6'},showlegend:false},{displayModeBar:false});
-  }
-  const tbody = document.getElementById('tbody-equipes');
-  if (!lista.length) { tbody.innerHTML='<tr><td colspan="5"><div class="empty-state"><p>Nenhum dado</p></div></td></tr>'; return; }
-  tbody.innerHTML = lista.map(([eq,v]) => {
-    const ticket = v.clientes>0?v.valor/v.clientes:0;
-    return '<tr><td><b>'+eq+'</b></td><td class="mono">'+fmt(v.clientes)+'</td><td class="mono">'+fmtBRL(v.valor)+'</td><td class="mono">'+fmtBRL(ticket)+'</td><td><span class="pill pill-red">'+((v.clientes/totalCli*100).toFixed(1))+'%</span></td></tr>';
-  }).join('');
-}
-function exportarEquipes() {
-  const safraSel = (document.getElementById('filt-equipe-safra')||{}).value||'';
-  const safraDate = parseSafra(safraSel);
-  const data = dadosControle.filter(r => {
-    if (safraSel && r['SAFRA']!==safraSel) return false;
-    return classificarEstorno(r, safraDate).estorno;
-  });
-  const eq = {};
-  data.forEach(r => { const e=r['EQUIPE']||'sem equipe'; if(!eq[e])eq[e]={c:0,v:0}; eq[e].c++; eq[e].v+=(parseFloat(r['VALOR'])||0); });
-  const rows = Object.entries(eq).sort((a,b)=>b[1].c-a[1].c);
-  const csv = ['Equipe;Inadimplentes;Valor Total;Ticket Medio', ...rows.map(([e,v])=>e+';'+v.c+';'+v.v.toFixed(2)+';'+(v.v/v.c).toFixed(2))].join('\n');
-  download('\ufeff'+csv, 'equipes_'+(safraSel||'todas')+'.csv','text/csv');
-}
-
-// RESUMO
-function renderResumo() {
-  const safras = [...new Set(dadosControle.map(r=>r['SAFRA']).filter(Boolean))].sort();
-  const funil = document.getElementById('funil-row');
-  const ec = {};
-  ETAPA_ORDER.forEach(e => { ec[e]=dadosControle.filter(r=>r['ETAPA']===e).length; });
-  if (funil) funil.innerHTML = ETAPA_ORDER.map(et =>
-    '<div class="funil-card" style="border-top-color:'+ETAPA_CORES[et]+'">' +
-    '<div class="fl">'+et+'</div><div class="fv" style="color:'+ETAPA_CORES[et]+'">'+fmt(ec[et])+'</div></div>'
-  ).join('');
-  const div = document.getElementById('resumo-safras');
-  if (!safras.length) { if(div) div.innerHTML='<div class="empty-state"><p>Nenhuma safra</p></div>'; return; }
-  if (div) div.innerHTML = safras.map(safra => {
-    const res = calcularEstornoPorSafra(safra);
-    const pctCor = parseFloat(res.pctEstorno)>38?'#DC2626':'#16A34A';
-    const fechStr = res.fechamento?res.fechamento.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'--';
-    return '<div style="margin-bottom:1.3rem"><div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem"><span style="font-size:.92rem;font-weight:700">Safra: '+safra+'</span><span style="font-size:.75rem;color:var(--text-light);background:var(--gray-bg);padding:2px 10px;border-radius:20px">Fechamento: '+fechStr+'</span></div>' +
-      '<div class="cards-row">' +
-      '<div class="card blue"><div class="card-accent"></div><div class="card-label">Gross</div><div class="card-value">'+fmt(res.gross)+'</div><div class="card-sub">Ativos: '+fmt(res.ativos)+' Canc: '+fmt(res.cancelados)+'</div></div>' +
-      '<div class="card red"><div class="card-accent"></div><div class="card-label">% Estorno Tratado</div><div class="card-value" style="color:'+pctCor+'">'+res.pctEstorno+'%</div><div class="card-sub">'+fmt(res.estornoTratado)+' clientes</div></div>' +
-      '<div class="card yellow"><div class="card-accent"></div><div class="card-label">Meta 38%</div><div class="card-value">'+fmt(res.metaEstorno)+'</div></div>' +
-      '<div class="card green"><div class="card-accent"></div><div class="card-label">Baixas</div><div class="card-value">'+fmt(dadosHistorico.filter(r=>r['SAFRA']===safra).length)+'</div></div>' +
-      '<div class="card purple"><div class="card-accent"></div><div class="card-label">Reducao Necessaria</div><div class="card-value">'+fmt(res.reducao)+'</div></div>' +
-      '<div class="card blue"><div class="card-accent"></div><div class="card-label">A Cobrar</div><div class="card-value">'+fmt(res.cobrar)+'</div></div>' +
-      '</div><div class="divider"></div></div>';
-  }).join('');
-}
-
-// ENVIOS DO DIA
-function renderEnviosDia() {
-  const hoje_d = new Date(); hoje_d.setHours(0,0,0,0);
-  const elegiveis = dadosControle.filter(r => {
-    if (!r['ETAPA'] || r['STATUS ACESSO']!=='Ativo' || (r['STATUS PAGAMENTO']||'').toLowerCase()!=='aberta') return false;
-    if (!r['ULTIMO ENVIO']) return true;
-    const ult = new Date(r['ULTIMO ENVIO']); ult.setHours(0,0,0,0);
-    return (hoje_d-ult)/86400000 >= INTERVALO_ENVIO;
-  });
-  const prev = elegiveis.filter(r=>r['ETAPA']==='Preventivo').length;
-  setEl('e-total',fmt(elegiveis.length)); setEl('e-prev',fmt(prev)); setEl('e-atr',fmt(elegiveis.length-prev));
-  const div = document.getElementById('envios-por-etapa');
-  if (!elegiveis.length) {
-    div.innerHTML='<div class="empty-state"><p>Todos os envios concluidos ou aguardando '+INTERVALO_ENVIO+' dias.</p></div>';
-    return;
-  }
-  div.innerHTML = ETAPA_ORDER.filter(et=>elegiveis.some(r=>r['ETAPA']===et)).map(etapa => {
-    const list = elegiveis.filter(r=>r['ETAPA']===etapa);
-    const cor = ETAPA_CORES[etapa];
-    return '<div style="margin-bottom:1rem">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">' +
-        '<div style="display:flex;align-items:center;gap:.55rem">' +
-          '<div style="width:9px;height:9px;border-radius:50%;background:'+cor+'"></div>' +
-          '<span style="font-weight:600">'+etapa+'</span>' +
-          '<span style="color:var(--text-light);font-size:.8rem">'+fmt(list.length)+' clientes</span>' +
-        '</div>' +
-        '<button class="btn btn-primary btn-sm" onclick="dispararEtapa(\''+etapa+'\')">Disparar '+etapa+'</button>' +
-      '</div>' +
-      '<div class="tbl-wrap" style="max-height:180px;overflow-y:auto"><table><thead><tr>' +
-        '<th>Nome</th><th>Nr Portado</th><th>Fatura</th><th>Valor</th><th>Venc.</th><th>Dias</th><th>Port.</th><th>Equipe</th><th>Ultimo Envio</th>' +
-      '</tr></thead><tbody>' +
-      list.slice(0,50).map(r =>
-        '<tr><td>'+(r['NOME']||'')+'</td><td class="mono">'+(r['NUMERO PORTADO']||'')+'</td><td>'+(r['FATURA']||'')+'</td><td class="mono">'+fmtBRL(r['VALOR'])+'</td><td>'+fmtData(r['VENCIMENTO'])+'</td><td>'+(r['DIAS ATRASO']||'')+'</td>' +
-        '<td><span class="pill '+(r['PORTABILIDADE']==='Portabilidade Concluida'?'pill-green':'pill-red')+'">'+(r['PORTABILIDADE']==='Portabilidade Concluida'?'Port.':'N/Port.')+'</span></td>' +
-        '<td>'+(r['EQUIPE']||'')+'</td><td>'+fmtData(r['ULTIMO ENVIO'])+'</td></tr>'
-      ).join('') +
-      (list.length>50?'<tr><td colspan="9" style="text-align:center;color:var(--text-light);font-size:.72rem">... e mais '+(list.length-50)+' registros</td></tr>':'') +
-      '</tbody></table></div></div><div class="divider"></div>';
-  }).join('');
-}
-
-// DISPARO
-async function dispararEtapa(etapa) {
-  if (!webhookUrl) { alert('Configure o Webhook n8n em Configuracoes.'); return; }
-  const hoje_d = new Date(); hoje_d.setHours(0,0,0,0);
-  const hoje_str = new Date().toISOString().slice(0,10);
-  const elegiveis = dadosControle.filter(r => {
-    if (r['ETAPA']!==etapa||r['STATUS ACESSO']!=='Ativo'||(r['STATUS PAGAMENTO']||'').toLowerCase()!=='aberta') return false;
-    if (!r['ULTIMO ENVIO']) return true;
-    const ult = new Date(r['ULTIMO ENVIO']); ult.setHours(0,0,0,0);
-    return (hoje_d-ult)/86400000 >= INTERVALO_ENVIO;
-  });
-  if (!elegiveis.length) { alert('Nenhum cliente elegivel para '+etapa+' (aguardar '+INTERVALO_ENVIO+' dias).'); return; }
-  if (!confirm('Confirmar disparo de '+fmt(elegiveis.length)+' mensagens para '+etapa+'?')) return;
-  mostrarLoading('Enviando para n8n...');
-  try {
-    const payload = {
-      etapa,
-      safra: elegiveis[0].SAFRA||'',
-      clientes: elegiveis.map(r => ({
-        cpf:r['CPF'], nome:r['NOME'], telefone:r['NUMERO PORTADO'],
-        numero_linha:r['NUMERO LINHA'], fatura:r['FATURA'],
-        valor:r['VALOR'], vencimento:r['VENCIMENTO'],
-        dias_atraso:r['DIAS ATRASO'], portabilidade:r['PORTABILIDADE'],
-        equipe:r['EQUIPE'], etapa:r['ETAPA']
-      }))
-    };
-    const resp = await fetch(webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-    if (resp.ok) {
-      alert('Disparo enviado! '+fmt(elegiveis.length)+' clientes para '+etapa);
-      const ids = new Set(elegiveis.map(r=>r['NUMERO DE ACESSO']||r['NUMERO PORTADO']));
-      dadosControle.forEach(r => { if(ids.has(r['NUMERO DE ACESSO']||r['NUMERO PORTADO'])) r['ULTIMO ENVIO']=hoje_str; });
-      if (sb) {
-        for (const r of elegiveis) {
-          try { try{await sb.from('controle_envio').update({'ULTIMO ENVIO':hoje_str}).eq('SAFRA',r['SAFRA']).eq('NUMERO DE ACESSO',r['NUMERO DE ACESSO']||r['NUMERO PORTADO']);}catch(e){} } catch(e) {}
-        }
-      }
-    } else { alert('Erro ao enviar para n8n: '+resp.status); }
-  } catch(e) { alert('Erro: '+e.message); }
-  ocultarLoading();
-}
-
-// RESPOSTAS
-async function carregarRespostasData() {
-  if (!sb) return;
-  const {data} = await sb.from('respostas_clientes').select('*').order('created_at',{ascending:false}).limit(2000);
-  dadosRespostas = data||[];
-}
-async function carregarRespostas() { await carregarRespostasData(); filtrarRespostas(); }
-function normTipo(r) {
-  const v=(r.acao||r.tipo_resposta||'').toUpperCase();
-  if(v.includes('BOLETO'))return'BOLETO';
-  if(v.includes('PIX'))return'CODIGO_PIX';
-  if(v.includes('BLOQUEAR'))return'BLOQUEAR';
-  return v;
-}
-function setRespPeriodo(dias) {
-  const ate = new Date();
-  const de = new Date();
-  const fmtDate = d => d.toISOString().slice(0,10);
-  const elDe = document.getElementById('filt-resp-de');
-  const elAte = document.getElementById('filt-resp-ate');
-  if (dias === -1) {
-    if (elDe) elDe.value = '';
-    if (elAte) elAte.value = '';
-  } else if (dias === 0) {
-    if (elDe) elDe.value = fmtDate(ate);
-    if (elAte) elAte.value = fmtDate(ate);
-  } else {
-    de.setDate(ate.getDate() - dias);
-    if (elDe) elDe.value = fmtDate(de);
-    if (elAte) elAte.value = fmtDate(ate);
-  }
-  filtrarRespostas();
-}
-
-function getRespostasFiltradas() {
-  const deVal = (document.getElementById('filt-resp-de')||{}).value||'';
-  const ateVal = (document.getElementById('filt-resp-ate')||{}).value||'';
-  const tipo = (document.getElementById('filt-resp-tipo')||{}).value||'todos';
-  let data = [...dadosRespostas];
-  if (deVal) {
-    const de = new Date(deVal + 'T00:00:00');
-    data = data.filter(r => r.created_at && new Date(r.created_at) >= de);
-  }
-  if (ateVal) {
-    const ate = new Date(ateVal + 'T23:59:59');
-    data = data.filter(r => r.created_at && new Date(r.created_at) <= ate);
-  }
-  if (tipo !== 'todos') data = data.filter(r => normTipo(r) === tipo);
-  return data;
-}
-function filtrarRespostas(){respPage=0;renderRespostas();}
-function renderRespostas(){
-  const data=getRespostasFiltradas();
-  const cnt={BOLETO:0,CODIGO_PIX:0,BLOQUEAR:0};
-  data.forEach(r=>{const t=normTipo(r);if(cnt[t]!==undefined)cnt[t]++;});
-  const tot=data.length||1,tot2=cnt.BOLETO+cnt.CODIGO_PIX+cnt.BLOQUEAR||1;
-  const pct=n=>tot>0?(n/tot*100).toFixed(1)+'% do total':'--';
-  ['d-','r-'].forEach(p=>{
-    setEl(p+'boleto',fmt(cnt.BOLETO));setEl(p+'pix',fmt(cnt.CODIGO_PIX));setEl(p+'bloquear',fmt(cnt.BLOQUEAR));
-    setEl(p+'boleto-pct',pct(cnt.BOLETO));setEl(p+'pix-pct',pct(cnt.CODIGO_PIX));setEl(p+'bloquear-pct',pct(cnt.BLOQUEAR));
-  });
-  setW('r-boleto-bar',(cnt.BOLETO/tot2*100).toFixed(1));
-  setW('r-pix-bar',(cnt.CODIGO_PIX/tot2*100).toFixed(1));
-  setW('r-bloquear-bar',(cnt.BLOQUEAR/tot2*100).toFixed(1));
-  document.getElementById('badge-resp').textContent=fmt(data.length);
-  renderGraficoRespostasDia(data);
-  const page=data.slice(respPage*RPG,(respPage+1)*RPG);
-  const tbody=document.getElementById('tbody-respostas');
-  const tLabel=t=>t==='BOLETO'?{l:'Boleto',c:'pill-blue'}:t==='CODIGO_PIX'?{l:'PIX',c:'pill-green'}:t==='BLOQUEAR'?{l:'Bloquear',c:'pill-red'}:{l:t||'--',c:'pill-gray'};
-  if(!page.length){tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><p>Nenhuma resposta</p></div></td></tr>';}
-  else{tbody.innerHTML=page.map((r,i)=>{const t=tLabel(normTipo(r));return'<tr><td>'+(respPage*RPG+i+1)+'</td><td class="mono">'+(r.telefone||'')+'</td><td>'+(r.nome||'')+'</td><td><span class="pill '+t.c+'">'+t.l+'</span></td><td>'+(r.fatura||'')+'</td><td class="mono">'+fmtBRL(r.valor)+'</td><td>'+fmtDatetime(r.created_at)+'</td></tr>';}).join('');}
-  const ftot=data.length,ini=respPage*RPG+1,fim=Math.min((respPage+1)*RPG,ftot);
-  document.getElementById('resp-count-text').textContent=ftot?'Mostrando '+ini+' a '+fim+' de '+fmt(ftot):'Nenhum resultado';
-  document.getElementById('btn-resp-prev').disabled=respPage===0;
-  document.getElementById('btn-resp-next').disabled=fim>=ftot;
-}
-function paginarRespostas(dir){respPage=Math.max(0,respPage+dir);renderRespostas();}
-function renderGraficoRespostasDia(data){
-  const cnt={};data.forEach(r=>{const d=(r.created_at||'').slice(0,10);if(!d)return;if(!cnt[d])cnt[d]={B:0,P:0,X:0};const t=normTipo(r);if(t==='BOLETO')cnt[d].B++;else if(t==='CODIGO_PIX')cnt[d].P++;else if(t==='BLOQUEAR')cnt[d].X++;});
-  const dias=Object.keys(cnt).sort();if(!dias.length||typeof Plotly==='undefined')return;
-  Plotly.newPlot('chart-respostas-dia',[
-    {x:dias,y:dias.map(d=>cnt[d].B),name:'Boleto',type:'bar',marker:{color:'#2563EB'}},
-    {x:dias,y:dias.map(d=>cnt[d].P),name:'PIX',type:'bar',marker:{color:'#16A34A'}},
-    {x:dias,y:dias.map(d=>cnt[d].X),name:'Bloquear',type:'bar',marker:{color:'#DC2626'}}
-  ],{barmode:'stack',paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'Inter',color:'#6B7280'},margin:{l:30,r:10,t:10,b:30},height:180,xaxis:{gridcolor:'#F3F4F6'},yaxis:{gridcolor:'#F3F4F6'},legend:{font:{size:10}}},{displayModeBar:false});
-}
-function exportarRespostas(){const data=getRespostasFiltradas();if(!data.length){alert('Nenhum dado');return;}const cols=Object.keys(data[0]);const csv=[cols.join(';'),...data.map(r=>cols.map(c=>r[c]||'').join(';'))].join('\n');download('\ufeff'+csv,'respostas_clientes.csv','text/csv');}
-
-// HISTORICO
-async function carregarHistorico(){
-  if(!sb)return;
-  try{
-  const{data,error}=await sb.from('historico_pagamentos').select('*').order('id',{ascending:false}).limit(2000);
-  if(error){console.warn('historico_pagamentos:',error.message);dadosHistorico=[];return;}
-  dadosHistorico=data||[];
-  const val=dadosHistorico.reduce((s,r)=>s+(parseFloat(r['VALOR'])||0),0);
-  const ec={};dadosHistorico.forEach(r=>{const e=r['ETAPA NO PAGAMENTO']||'';ec[e]=(ec[e]||0)+1;});
-  const melhor=Object.entries(ec).sort((a,b)=>b[1]-a[1])[0]?.[0]||'--';
-  setEl('h-total',fmt(dadosHistorico.length));setEl('h-valor',fmtBRL(val));setEl('h-etapa',melhor);
-  const tbody=document.getElementById('tbody-historico');
-  if(!dadosHistorico.length){tbody.innerHTML='<tr><td colspan="9"><div class="empty-state"><p>Nenhum pagamento</p></div></td></tr>';return;}
-  tbody.innerHTML=dadosHistorico.slice(0,200).map(r=>'<tr><td>'+(r['SAFRA']||'')+'</td><td class="mono">'+(r['CPF']||'')+'</td><td>'+(r['NOME']||'')+'</td><td class="mono">'+(r.NUMERO_PORTADO||'')+'</td><td>'+(r['FATURA']||'')+'</td><td class="mono">'+fmtBRL(r['VALOR'])+'</td><td>'+fmtData(r['VENCIMENTO'])+'</td><td><span style="color:'+(ETAPA_CORES[r['ETAPA NO PAGAMENTO']]||'#111')+'">'+(r['ETAPA NO PAGAMENTO']||'')+'</span></td><td>'+fmtData(r['DATA PAGAMENTO']||r.DATA_PAGAMENTO)+'</td></tr>').join('');
-  }catch(e){console.warn('historico_pagamentos erro:',e.message);dadosHistorico=[];}
-}
-async function carregarHistEnvios(){
-  if(!sb)return;
-  let todos=[],offset=0;
-  try{
-  while(true){const{data,error}=await sb.from('historico_envios').select('*').range(offset,offset+999);if(error||!data||!data.length)break;todos.push(...data);if(data.length<1000)break;offset+=1000;}
-  dadosHistEnvios=todos;
-  const comMsg=todos.filter(r=>ETAPA_ORDER.some(e=>r[e]||r[e.replace(' ','_')])).length;
-  const ec={};ETAPA_ORDER.forEach(e=>{ec[e]=todos.filter(r=>r[e]||r[e.replace(' ','_')]).length;});
-  const melhor=Object.entries(ec).sort((a,b)=>b[1]-a[1])[0]?.[0]||'--';
-  setEl('he-total',fmt(todos.length));setEl('he-rec',fmt(comMsg));setEl('he-etapa',melhor);
-  const tbody=document.getElementById('tbody-hist-envios');
-  if(!todos.length){tbody.innerHTML='<tr><td colspan="15"><div class="empty-state"><p>Nenhum envio</p></div></td></tr>';return;}
-  tbody.innerHTML=todos.slice(0,200).map(r=>'<tr><td>'+(r['SAFRA']||'')+'</td><td>'+(r['NOME']||'')+'</td><td class="mono">'+(r.NUMERO_PORTADO||'')+'</td><td class="mono">'+(r['CPF']||'')+'</td><td>'+(r['PORTABILIDADE']||'')+'</td><td>'+(r['EQUIPE']||'')+'</td>'+ETAPA_ORDER.map(e=>'<td style="color:'+(r[e]?'#16A34A':'#9CA3AF')+'">'+(r[e]?fmtData(r[e]):'--')+'</td>').join('')+'</tr>').join('');
-  }catch(e){console.warn('historico_envios erro:',e.message);dadosHistEnvios=[];}
-}
-
-// UPLOAD
-function dragOver(e){e.preventDefault();document.getElementById('upload-zone').classList.add('drag');}
-function dragLeave(){document.getElementById('upload-zone').classList.remove('drag');}
-function dropFile(e){e.preventDefault();dragLeave();const f=e.dataTransfer.files[0];if(f)processarArquivo(f);}
-async function processarArquivo(file){
-  if(!sb){alert('Conecte ao Supabase primeiro.');return;}
-  const mes=document.getElementById('inp-safra-mes').value;
-  const ano=document.getElementById('inp-safra-ano').value;
-  if(!mes||!ano){alert('Selecione o m\u00eas e ano da safra.');return;}
-  const safra=mes+' '+ano;
-  const modo=document.getElementById('inp-safra-modo').value;
-  setUploadProgress(true,'Lendo arquivo...',5);
-  const result=document.getElementById('upload-result');result.innerHTML='';
-  try{
-    const text=await lerArquivoLatin1(file);
-    setUploadProgress(true,'Fazendo parse...',15);
-    const rows=parseCSV(text);
-    if(!rows.length)throw new Error('Arquivo vazio.');
-
-    // Determinar mes/ano da safra para filtros
-    const mesNums={'JANEIRO':1,'FEVEREIRO':2,'MARCO':3,'ABRIL':4,'MAIO':5,'JUNHO':6,
-                   'JULHO':7,'AGOSTO':8,'SETEMBRO':9,'OUTUBRO':10,'NOVEMBRO':11,'DEZEMBRO':12};
-    const mesNum = mesNums[mes]||0;
-    const anoNum = parseInt(ano);
-
-    // Verificar duplicidade pela coluna "Data final do processamento" (col AF)
-    const getDataProcessamento = (row) => {
-      return getCol(row,'Data final do processamento','Data final do processamento','DATA_FINAL_PROCESSAMENTO')||'';
-    };
-    const datasProc = [...new Set(rows.map(r=>getDataProcessamento(r)).filter(Boolean))];
-    if(datasProc.length>0 && modo==='nova'){
-      // Checar se ja existe no banco com essa data de processamento
-      const {data:existentes} = await sb.from('controle_envio')
-        .select('"SAFRA","DATA PROCESSAMENTO"')
-        .eq('SAFRA',safra)
-        .eq('DATA PROCESSAMENTO',datasProc[0])
-        .limit(1);
-      if(existentes&&existentes.length>0){
-        if(!confirm('Aviso: j\u00e1 existe um upload desta safra com a mesma data de processamento ('+datasProc[0]+'). Deseja continuar mesmo assim?')){
-          setUploadProgress(false,'',0);
-          result.innerHTML='<div class="alert alert-warn">Upload cancelado pelo usu\u00e1rio.</div>';
-          return;
-        }
-      }
-    }
-
-    // Filtrar linhas pela data de ativacao e emissao da 1a fatura
-    const rowsAntes = rows.length;
-    const rowsFiltradas = rows.filter(row=>{
-      // Filtro 1: Data da ativacao deve ser no mes/ano da safra
-      const dataAtiv = getCol(row,'Data da ativa\u00e7\u00e3o','Data da ativacao','DATA_ATIVACAO')||'';
-      if(dataAtiv){
-        const partsAtiv = dataAtiv.split('/');
-        if(partsAtiv.length===3){
-          const mAtiv=parseInt(partsAtiv[1]), aAtiv=parseInt(partsAtiv[2]);
-          if(mesNum>0 && (mAtiv!==mesNum||aAtiv!==anoNum)) return false;
-        }
-      }
-      // Filtro 2: Emissao da 1a fatura deve ser >= mes de ativacao
-      const dataEmis = getCol(row,'1\u00aa fatura - Data de emiss\u00e3o','1a fatura - Data de emissao')||'';
-      if(dataEmis&&dataAtiv){
-        const partsEmis = dataEmis.split('/');
-        const partsAtiv2 = dataAtiv.split('/');
-        if(partsEmis.length===3&&partsAtiv2.length===3){
-          const emAno=parseInt(partsEmis[2]),emMes=parseInt(partsEmis[1]);
-          const atAno=parseInt(partsAtiv2[2]),atMes=parseInt(partsAtiv2[1]);
-          const emisNum=emAno*100+emMes, ativNum=atAno*100+atMes;
-          if(emisNum<ativNum) return false;
-        }
-      }
-      return true;
-    });
-
-    const rowsDescartadas = rowsAntes - rowsFiltradas.length;
-    if(rowsDescartadas>0){
-      setUploadProgress(true,fmt(rowsFiltradas.length)+' registros v\u00e1lidos ('+fmt(rowsDescartadas)+' descartados por filtro de ativa\u00e7\u00e3o/emiss\u00e3o). Cruzando com conectadas...',25);
-    } else {
-      setUploadProgress(true,fmt(rowsFiltradas.length)+' registros. Cruzando com conectadas...',25);
-    }
-
-    // Buscar GROSS da tabela conectadas (ativacoes do mes da safra)
-    let grossConectadas = 0;
-    try {
-      // DATA_ATIVACAO is stored as text YYYY-MM-DD, use text comparison
-      const mesStr=String(mesNum).padStart(2,'0');
-      const mesNextNum=mesNum===12?1:mesNum+1;
-      const anoNext=mesNum===12?anoNum+1:anoNum;
-      const mesNextStr=String(mesNextNum).padStart(2,'0');
-      const {count} = await sb.from('conectadas')
-        .select('*',{count:'exact',head:true})
-        .gte('DATA_ATIVACAO', anoNum+'-'+mesStr+'-01')
-        .lt('DATA_ATIVACAO', anoNext+'-'+mesNextStr+'-01');
-      grossConectadas = count||0;
-    } catch(e){ console.warn('Erro ao buscar gross conectadas:',e); }
-
-    // rows ja foi declarado como const acima, reusar rowsFiltradas diretamente
-    let conectadas=[],offset=0;
-    while(true){const{data}=await sb.from('conectadas').select('TELEFONE_PORTADO,NUMERO_LINHA,PORTABILIDADE,NOME,EQUIPE').range(offset,offset+999);if(!data||!data.length)break;conectadas.push(...data);if(data.length<1000)break;offset+=1000;}
-    const mapaPort={};
-    conectadas.forEach(c=>{
-      const tel=limpaTel(c.TELEFONE_PORTADO), lin=limpaTel(c.NUMERO_LINHA);
-      // Normalizar portabilidade para o valor completo da tabela conectadas
-      const port = c.PORTABILIDADE||'';
-      const obj={portabilidade:port, nome:c.NOME||'', equipe:c.EQUIPE||''};
-      if(tel) mapaPort[tel]=obj;
-      if(lin) mapaPort[lin]=obj;
-      // Tambem indexar sem slice(-11) para cobrir numeros com menos digitos
-      const tel9=String(c.TELEFONE_PORTADO||'').replace(/\D/g,'');
-      const lin9=String(c.NUMERO_LINHA||'').replace(/\D/g,'');
-      if(tel9&&!mapaPort[tel9]) mapaPort[tel9]=obj;
-      if(lin9&&!mapaPort[lin9]) mapaPort[lin9]=obj;
-    });
-    setUploadProgress(true,'Processando...',40);
-    const getCol=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
-    const safraDate=parseSafra(safra);
-    const registros=rows.map(row=>{
-      const numAcesso=limpaTel(getCol(row,'Numero de acesso','N\u00c3\u00bamero de acesso','N\u00famero de acesso','NUMERO_ACESSO'));
-      const cpf=(getCol(row,'Cpf','CPF')+'').replace(/\D/g,'');
-      const statusAcesso=getCol(row,'Status do numero de acesso','Status do n\u00c3\u00bamero de acesso','Status do n\u00famero de acesso','STATUS_ACESSO');
-      let fatNum='',fatVal=0,fatVenc='',fatStatus='',fatLinha='',diasAtraso=0;
-      // Encontrar fatura mais urgente aberta (menor vencimento)
-      const faturas=[];
-      for(let i=1;i<=3;i++){
-        
-        const status=getCol(row,...[i+'\u00aa fatura - Status da fatura',i+'a fatura - Status da fatura',i+'\u00aa fatura - Status da fatura']);
-        if((status||'').toLowerCase()==='aberta'){
-          const venc=getCol(row,...[i+'\u00aa fatura - Data de vencimento',i+'\u00aa fatura - Data de vencimento'])||'';
-          const valStr=getCol(row,...[i+'\u00aa fatura - Pre\u00e7o da fatura',i+'\u00aa fatura - Preco da fatura',i+'\u00aa fatura - Pre\u00e7o da fatura'])||'0';
-          const val=parseFloat(valStr.replace('R$','').replace(/\./g,'').replace(',','.'))||0;
-          const num=getCol(row,...[i+'\u00aa fatura - N\u00famero da fatura',i+'\u00aa fatura - N\u00famero da fatura'])||'';
-          const dias=parseInt(getCol(row,...[i+'\u00aa fatura - Dias de atraso',i+'\u00aa fatura - Dias de atraso'])||'0')||0;
-          const linha=getCol(row,...[i+'\u00aa fatura - Linha digit\u00e1vel',i+'\u00aa fatura - Linha digit\u00e1vel'])||'';
-          faturas.push({num,val,venc,dias,linha});
-        }
-      }
-      // Ordenar por vencimento (menor primeiro = mais urgente)
-      faturas.sort((a,b)=>a.venc<b.venc?-1:1);
-      if(faturas.length>0){const f=faturas[0];fatNum=f.num;fatVal=f.val;fatVenc=f.venc;fatStatus='Aberta';fatLinha=f.linha;diasAtraso=f.dias;}
-      else{fatStatus=getCol(row,'1\u00aa fatura - Status da fatura','1\u00aa fatura - Status da fatura')||'Sem fatura';}
-      // Tentar lookup com 11 digitos e tambem com numero completo
-      const numAcessoFull=String(getCol(row,'Numero de acesso','N\u00famero de acesso','N\u00c3\u00bamer de acesso',
-        'N\u00c3\u00bamer de acesso','NUMERO_ACESSO','')||'').replace(/\D/g,'');
-      const matched=mapaPort[numAcesso]||mapaPort[numAcessoFull]||null;
-      const portabilidade=matched?matched.portabilidade:'Portabilidade nao Concluida';
-      const nomeCon=matched?matched.nome:'';
-      const equipe=matched?matched.equipe:'';
-      const etapa=determinarEtapa(diasAtraso,portabilidade,statusAcesso,fatStatus);
-      const vencISO=fatVenc?converteData(fatVenc):null;
-      const tmpCliente={
-        'STATUS ACESSO':statusAcesso,
-        'STATUS 1\u00aa FATURA':fat1status||'',
-        'STATUS 2\u00aa FATURA':fat2status||'',
-        'STATUS PAGAMENTO':fatStatus,
-        VENCIMENTO:vencISO
-      };
-      const{estorno,tipo:tipoEstorno}=classificarEstorno(tmpCliente,safraDate);
-      const dataProcRaw = getDataProcessamento(row);
-      const dataProc = converteData(dataProcRaw)||dataProcRaw||null;
-      return{
-      SAFRA:safra,
-      CPF:cpf,
-      'DATA PROCESSAMENTO':dataProc||null,
-      NOME:nomeCon,
-      'NUMERO DE ACESSO':numAcesso,
-      'NUMERO PORTADO':numAcesso,
-      'NUMERO LINHA':numAcesso,
-      'STATUS ACESSO':statusAcesso,
-      FATURA:fatNum||null,
-      'STATUS 1\u00aa FATURA':fat1status||null,
-      'STATUS 2\u00aa FATURA':fat2status||null,
-      'STATUS PAGAMENTO':fatStatus||null,
-      VALOR:fatVal||null,
-      VENCIMENTO:vencISO||null,
-      'DIAS ATRASO':diasAtraso||null,
-      PORTABILIDADE:portabilidade||null,
-      EQUIPE:equipe||null,
-      ETAPA:etapa||null,
-      ESTORNO:estorno,
-      TIPO_ESTORNO:tipoEstorno||null,
-      'LINHA DIGITAVEL':fatLinha||null
-    };
-    });
-    setUploadProgress(true,'Enviando para Supabase...',60);
-    let inseridos=0,atualizados=0,erros=0;
-    for(let i=0;i<registros.length;i+=500){
-      const batch=registros.slice(i,i+500);
-      setUploadProgress(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registros.length/500)+'...',60+(i/registros.length*35));
-      if(modo==='nova'){
-        // Valid DB columns only - exact names
-        const VALID_COLS = new Set(['SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','NUMERO LINHA',
-          'STATUS ACESSO','FATURA','STATUS 1\u00aa FATURA','STATUS 2\u00aa FATURA',
-          'STATUS PAGAMENTO','VALOR','VENCIMENTO','DIAS ATRASO',
-          'PORTABILIDADE','EQUIPE','ETAPA','ESTORNO','TIPO_ESTORNO','LINHA DIGITAVEL',
-          'DATA PROCESSAMENTO']);
-        const cleanBatch=batch.map(r=>{
-          const o={};
-          Object.keys(r).forEach(k=>{
-            if(VALID_COLS.has(k)){
-              o[k] = (r[k]===''||r[k]===undefined) ? null : r[k];
-            }
-          });
-          return o;
-        });
-        const{error}=await sb.from('controle_envio').upsert(cleanBatch,{onConflict:'NUMERO DE ACESSO,FATURA,SAFRA',ignoreDuplicates:false});
-        if(error){erros+=batch.length;console.error('upsert error:',error.message,error.details,JSON.stringify(cleanBatch[0]));}else inseridos+=batch.length;
-      }else{
-        for(const reg of batch){
-          const{error}=await sb.from('controle_envio').update({'STATUS ACESSO':reg.STATUS_ACESSO,VALOR:reg.VALOR,VENCIMENTO:reg.VENCIMENTO,'DIAS ATRASO':reg.DIAS_ATRASO,'STATUS PAGAMENTO':reg.STATUS_FATURA,ETAPA:reg.ETAPA,ESTORNO:reg.ESTORNO,TIPO_ESTORNO:reg.TIPO_ESTORNO}).eq('SAFRA',safra).eq('NUMERO DE ACESSO',reg.NUMERO_ACESSO);
-          if(error)erros++;else atualizados++;
-        }
-        // Identificar pagamentos automaticamente
-        const pagamentos=registros.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='paga');
-        for(const p of pagamentos){
-          try{await sb.from('historico_pagamentos').upsert({'SAFRA':p['SAFRA'],'CPF':p['CPF'],'NOME':p['NOME'],'NUMERO PORTADO':p['NUMERO PORTADO'],'FATURA':p['FATURA'],'VALOR':p['VALOR'],'VENCIMENTO':p['VENCIMENTO'],'DATA PAGAMENTO':new Date().toISOString().slice(0,10),'created_at':new Date().toISOString()},{onConflict:'SAFRA,NUMERO PORTADO,FATURA',ignoreDuplicates:true});}catch(e){}
-        }
-      }
-    }
-    // Salvar snapshot do dia
-    const totalEstorno=registros.filter(r=>r['ESTORNO']).length;
-    const pctSnap=registros.length>0?(totalEstorno/registros.length*100).toFixed(1):'0';
-    await salvarSnapshot(safra,pctSnap,totalEstorno,registros.length);
-    await sb.from('historico_uploads').insert({safra,modo,total_registros:registros.length,inseridos:modo==='nova'?inseridos:0,atualizados:modo==='atualizar'?atualizados:0,erros,status:erros===0?'Sucesso':'Parcial',created_at:new Date().toISOString()});
-    setUploadProgress(false,'',100);
-    result.innerHTML='<div class="alert alert-ok">Upload concluido! '+fmt(modo==='nova'?inseridos:atualizados)+' registros '+(modo==='nova'?'inseridos':'atualizados')+(erros>0?' - '+erros+' erros':'')+'.</div>';
-    await carregarControle();
-    atualizarDashboard();
-  }catch(e){setUploadProgress(false,'',0);result.innerHTML='<div class="alert alert-err">Erro: '+e.message+'</div>';console.error(e);}
-}
-function setUploadProgress(show,text,pct){const div=document.getElementById('upload-progress');div.style.display=show?'block':'none';document.getElementById('upload-status-text').textContent=text;document.getElementById('upload-bar').style.width=pct+'%';document.getElementById('upload-detail').textContent=show?Math.round(pct)+'% concluido':'';}
-function lerArquivoLatin1(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>resolve(e.target.result);reader.onerror=reject;reader.readAsText(file,'latin1');});}
-function parseCSV(text){const lines=text.split('\n').filter(l=>l.trim());if(lines.length<2)return[];const sep=lines[0].includes(';')?';':',';const headers=lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));return lines.slice(1).filter(l=>l.trim()).map(line=>{const vals=line.split(sep).map(v=>v.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,i)=>obj[h]=vals[i]||'');return obj;});}
-function limpaTel(v){return String(v||'').replace(/\D/g,'').slice(-11);}
-function converteData(v){if(!v)return null;const p=v.split('/');if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return v;}
-function determinarEtapa(dias,portabilidade,statusAcesso,statusFatura){
-  if(statusAcesso!=='Ativo'||(statusFatura||'').toLowerCase()!=='aberta')return null;
-  const concluida=portabilidade==='Portabilidade Concluida'||portabilidade==='Concluida';
-  if(dias<=-2)return'Preventivo';
-  if(dias>=0&&dias<=6)return null;
-  if(dias>=7&&dias<=10)return'Etapa 1';
-  if(dias>=11&&dias<=15)return'Etapa 2';
-  if(dias>=16&&dias<=23)return'Etapa 3';
-  if(dias>=24&&dias<=30)return'Etapa 4';
-  if(!concluida)return null;
-  if(dias>=31&&dias<=42)return'Etapa 5';
-  if(dias>=43&&dias<=50)return'Etapa 6';
-  if(dias>=51&&dias<=62)return'Etapa 7';
-  if(dias>=63&&dias<=70)return'Etapa 8';
-  return null;
-}
-async function prepararDownload(){
-  if(!sb){alert('Conecte ao Supabase primeiro.');return;}
-  const safra=document.getElementById('sel-safra-download').value;
-  let query=sb.from('controle_envio').select('*').eq('STATUS ACESSO','Ativo').eq('STATUS PAGAMENTO','Aberta');
-  if(safra)query=query.eq('SAFRA',safra);
-  const{data,error}=await query;
-  if(error||!data){alert('Erro ao buscar dados.');return;}
-  document.getElementById('download-stats').style.display='block';
-  document.getElementById('download-count').textContent=fmt(data.length);
-  const cols=['SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','STATUS ACESSO','FATURA','VALOR','VENCIMENTO','DIAS ATRASO','STATUS PAGAMENTO','PORTABILIDADE','EQUIPE','ETAPA','ULTIMO ENVIO'];
-  const csv=[cols.join(';'),...data.map(r=>cols.map(c=>r[c]||'').join(';'))].join('\n');
-  download('\ufeff'+csv,'consulta_rpa_'+(safra||'todas')+'_'+hoje()+'.csv','text/csv');
-}
-
-// DASHBOARD
-function atualizarDashboard(){
-  const data=dadosControle;
-  const ativo=data.filter(r=>r['STATUS ACESSO']==='Ativo').length;
-  const canc=data.filter(r=>r['STATUS ACESSO']!=='Ativo').length;
-  const aberta=data.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='aberta').length;
-  const paga=data.filter(r=>r['STATUS PAGAMENTO']&&(r['STATUS PAGAMENTO']||'').toLowerCase()!=='aberta').length;
-  const val=data.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='aberta').reduce((s,r)=>s+(parseFloat(r['VALOR'])||0),0);
-  const portOk=data.filter(r=>r['PORTABILIDADE']==='Portabilidade Concluida'||r['PORTABILIDADE']==='Concluida').length;
-  setEl('d-total',fmt(data.length));setEl('d-ativo',fmt(ativo));setEl('d-canc',fmt(canc));
-  setEl('d-aberta',fmt(aberta));setEl('d-paga',fmt(paga));setEl('d-valor',fmtBRL(val));
-  setEl('d-port-ok',fmt(portOk));setEl('d-port-nok',fmt(data.length-portOk));
-  setEl('d-port-pct',data.length>0?(portOk/data.length*100).toFixed(1)+'%':'--');
-  setEl('d-pag',fmt(dadosHistorico.length));
-  // Estorno geral
-  const safras=[...new Set(data.map(r=>r['SAFRA']).filter(Boolean))];
-  let totalEstorno=0;
-  safras.forEach(s=>{const res=calcularEstornoPorSafra(s);totalEstorno+=res.estornoTratado;});
-  setEl('d-estorno',data.length>0?(totalEstorno/data.length*100).toFixed(1)+'%':'--');
-  renderRespostas();
-  renderGraficoVenc();
-  renderGraficoPort();
-}
-function renderGraficoVenc(){
-  if(typeof Plotly==='undefined')return;
-  const hoje=new Date();hoje.setHours(0,0,0,0);
-  const cnt={};dadosControle.forEach(r=>{const d=(r['VENCIMENTO']||'').slice(0,10);if(!d)return;cnt[d]=(cnt[d]||0)+1;});
-  const dias=Object.keys(cnt).sort();if(!dias.length)return;
-  Plotly.newPlot('chart-venc',[{x:dias,y:dias.map(d=>cnt[d]),type:'bar',marker:{color:dias.map(d=>{const dd=new Date(d);dd.setHours(0,0,0,0);return dd<hoje?'#DC2626':dd.getTime()===hoje.getTime()?'#D97706':'#2563EB';})}}],{paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'Inter',color:'#6B7280'},margin:{l:30,r:10,t:10,b:30},height:210,xaxis:{gridcolor:'#F3F4F6'},yaxis:{gridcolor:'#F3F4F6'},showlegend:false},{displayModeBar:false});
-}
-function renderGraficoPort(){
-  if(typeof Plotly==='undefined')return;
-  const cnt={};dadosControle.forEach(r=>{const p=r['PORTABILIDADE']||'N/D';cnt[p]=(cnt[p]||0)+1;});
-  if(!Object.keys(cnt).length)return;
-  Plotly.newPlot('chart-port',[{labels:Object.keys(cnt),values:Object.values(cnt),type:'pie',hole:0.6,marker:{colors:['#16A34A','#DC2626','#D97706','#9CA3AF']},textinfo:'percent'}],{paper_bgcolor:'#fff',font:{family:'Inter',color:'#6B7280'},margin:{l:0,r:0,t:0,b:0},height:210,legend:{font:{size:10}}},{displayModeBar:false});
-}
-function exportarWpp(){
-  const data=getDadosFiltrados();
-  const cols=['SAFRA','NOME','CPF','NUMERO PORTADO','NUMERO LINHA','FATURA','VALOR','VENCIMENTO','DIAS ATRASO','ETAPA','PORTABILIDADE','EQUIPE'];
-  const csv=[cols.join(';'),...data.map(r=>cols.map(c=>r[c]||'').join(';'))].join('\n');
-  download('\ufeff'+csv,'wpp_'+hoje()+'.csv','text/csv');
-}
-
-
-// UPLOAD CONECTADAS
-function dragOver2(e){e.preventDefault();document.getElementById('upload-zone-con').classList.add('drag');}
-function dragLeave2(){document.getElementById('upload-zone-con').classList.remove('drag');}
-function dropFile2(e){e.preventDefault();dragLeave2();const f=e.dataTransfer.files[0];if(f)processarConectadas(f);}
-
-async function processarConectadas(file) {
-  if(!sb){alert('Conecte ao Supabase primeiro.');return;}
-  const modo=document.getElementById('inp-con-modo').value;
-  const result=document.getElementById('upload-result-con');
-  result.innerHTML='';
-  setUploadProgressCon(true,'Lendo arquivo...',5);
-  try {
-    const arrayBuffer=await file.arrayBuffer();
-    let rows=[];
-    if(typeof XLSX!=='undefined'){
-      const wb=XLSX.read(arrayBuffer,{type:'array',cellDates:true});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      rows=XLSX.utils.sheet_to_json(ws,{raw:false,dateNF:'yyyy-mm-dd'});
-    } else {
-      const text=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(file,'latin1');});
-      rows=parseCSV(text);
-    }
-    if(!rows.length)throw new Error('Arquivo vazio.');
-    setUploadProgressCon(true,fmt(rows.length)+' registros. Processando...',20);
-
-    const getC=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return String(row[n]);}return null;};
-
-    const registros=rows.map(row=>{
-      const dataAtivRaw=getC(row,'DATA_ATIVACAO');
-      const dataVendaRaw=getC(row,'DATA_VENDA');
-      // converteData normaliza para YYYY-MM-DD independente do formato de entrada
-      const dataAtivNorm=converteData(dataAtivRaw);
-      const dataVendaNorm=converteData(dataVendaRaw);
-      return {
-        TELEFONE_PORTADO:getC(row,'TELEFONE_PORTADO'),
-        NUMERO_LINHA:getC(row,'NUMERO_LINHA'),
-        CPF:getC(row,'CPF'),
-        NOME:getC(row,'NOME'),
-        PORTABILIDADE:getC(row,'PORTABILIDADE'),
-        EQUIPE:getC(row,'EQUIPE'),
-        DATA_ATIVACAO:dataAtivNorm,
-        DATA_VENDA:dataVendaNorm,
-        PLANO:getC(row,'PLANO'),
-        VENDEDOR:getC(row,'VENDEDOR'),
-        PROPOSTA:getC(row,'PROPOSTA')
-      };
-    }).filter(r=>r.TELEFONE_PORTADO||r.NUMERO_LINHA);
-
-    // Deduplicar por TELEFONE_PORTADO (mesmo arquivo pode ter duplicatas)
-    const seen=new Set();
-    const registrosDedups=registros.filter(r=>{
-      const key=r.TELEFONE_PORTADO||r.NUMERO_LINHA||'';
-      if(!key||seen.has(key))return false;
-      seen.add(key);
-      return true;
-    });
-    const dupCount=registros.length-registrosDedups.length;
-    if(dupCount>0) console.log('Duplicatas removidas do arquivo:',dupCount);
-
-    setUploadProgressCon(true,fmt(registros.length)+' validos. Enviando...',35);
-
-    if(modo==='substituir'){
-      if(!confirm('Isso ira APAGAR todos os registros atuais de conectadas e reimportar. Confirma?')){setUploadProgressCon(false,'',0);return;}
-      const {error}=await sb.from('conectadas').delete().neq('id',0);
-      if(error)throw new Error('Erro ao limpar: '+error.message);
-    }
-
-    let inseridos=0,erros=0;
-    for(let i=0;i<registrosDedups.length;i+=500){
-      const batch=registrosDedups.slice(i,i+500);
-      setUploadProgressCon(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registrosDedups.length/500)+'...',35+(i/registrosDedups.length*60));
-      const {error}=await sb.from('conectadas').upsert(batch,{onConflict:'TELEFONE_PORTADO',ignoreDuplicates:false});
-      if(error){erros+=batch.length;console.error('conectadas:',error.message);}else inseridos+=batch.length;
-    }
-
-    setUploadProgressCon(false,'',100);
-    result.innerHTML='<div class="alert alert-ok">'+fmt(inseridos)+' registros importados'+(dupCount>0?' ('+fmt(dupCount)+' duplicatas ignoradas)':' ')+(erros>0?' - '+erros+' erros':'')+'. GROSS atualizado!</div>';
-    await carregarGrossPorMes();
-  } catch(e){
-    setUploadProgressCon(false,'',0);
-    result.innerHTML='<div class="alert alert-err">Erro: '+e.message+'</div>';
-    console.error(e);
-  }
-}
-
-function setUploadProgressCon(show,text,pct){
-  const div=document.getElementById('upload-progress-con');if(!div)return;
-  div.style.display=show?'block':'none';
-  const st=document.getElementById('upload-status-con');if(st)st.textContent=text;
-  const bar=document.getElementById('upload-bar-con');if(bar)bar.style.width=pct+'%';
-  const det=document.getElementById('upload-detail-con');if(det)det.textContent=show?Math.round(pct)+'% concluido':'';
-}
-
-async function carregarGrossPorMes() {
-  if(!sb)return;
-  const div=document.getElementById('gross-por-mes');if(!div)return;
-  div.innerHTML='<div style="font-size:.8rem;color:var(--text-light)">Calculando...</div>';
-  try {
-    const {data,error}=await sb.from('conectadas').select('DATA_ATIVACAO').not('DATA_ATIVACAO','is',null);
-    if(error||!data){div.innerHTML='<div class="alert alert-warn">Sem DATA_ATIVACAO. Faca o upload da base de conectadas.</div>';return;}
-    const counts={};
-    data.forEach(r=>{
-      let raw=r.DATA_ATIVACAO||'';
-      // Convert DD/MM/YYYY to YYYY-MM for grouping
-      if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)){const p=raw.split('/');raw=p[2]+'-'+p[1];}
-      else{raw=raw.slice(0,7);}
-      if(raw&&raw.length===7)counts[raw]=(counts[raw]||0)+1;
-    });
-    const meses=Object.keys(counts).sort().reverse().slice(0,12);
-    const ML={'01':'Janeiro','02':'Fevereiro','03':'Marco','04':'Abril','05':'Maio','06':'Junho',
-               '07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro','11':'Novembro','12':'Dezembro'};
-    if(!meses.length){div.innerHTML='<div class="alert alert-warn">Nenhuma DATA_ATIVACAO encontrada.</div>';return;}
-    div.innerHTML='<div class="tbl-wrap"><table><thead><tr><th>Mes/Safra</th><th style="text-align:right">GROSS</th></tr></thead><tbody>'+
-      meses.map(ym=>{const[ano,mes]=ym.split('-');return'<tr><td><b>'+(ML[mes]||mes)+' '+ano+'</b></td><td class="mono" style="color:var(--blue);font-weight:700;text-align:right">'+fmt(counts[ym])+'</td></tr>';}).join('')+
-      '</tbody></table></div>';
-  } catch(e){div.innerHTML='<div class="alert alert-err">Erro: '+e.message+'</div>';}
-}
-
-// UTILS
-function fmt(n){return n!=null?Number(n).toLocaleString('pt-BR'):'--';}
-function fmtBRL(v){const n=parseFloat(v);if(isNaN(n)||v==null||v==='')return'--';return'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
-function fmtData(v){if(!v)return'--';const s=String(v).slice(0,10),p=s.split('-');return p.length===3?p[2]+'/'+p[1]+'/'+p[0]:s;}
-function fmtDatetime(v){if(!v)return'--';return new Date(v).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});}
-function setEl(id,val){const e=document.getElementById(id);if(e)e.textContent=val;}
-function setW(id,pct){const e=document.getElementById(id);if(e)e.style.width=pct+'%';}
-function download(content,filename,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=filename;a.click();}
-function hoje(){return new Date().toISOString().slice(0,10).replace(/-/g,'');}
-function mostrarLoading(msg){document.getElementById('loading-text').textContent=msg||'Carregando...';document.getElementById('loading-overlay').classList.add('show');}
-function ocultarLoading(){document.getElementById('loading-overlay').classList.remove('show');}
-
-
 </script>
+
 </body>
 </html>
