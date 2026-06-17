@@ -1571,7 +1571,8 @@ async function processarArquivo(file){
         VENCIMENTO:vencISO
       };
       const{estorno,tipo:tipoEstorno}=classificarEstorno(tmpCliente,safraDate);
-      const dataProc = getDataProcessamento(row);
+      const dataProcRaw = getDataProcessamento(row);
+      const dataProc = converteData(dataProcRaw)||dataProcRaw||null;
       return{
       SAFRA:safra,
       CPF:cpf,
@@ -1749,8 +1750,8 @@ async function processarConectadas(file) {
     const getC=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return String(row[n]);}return null;};
 
     const registros=rows.map(row=>{
-      const dataAtiv=getC(row,'DATA_ATIVACAO');
-      const dataVenda=getC(row,'DATA_VENDA');
+      const dataAtivRaw=getC(row,'DATA_ATIVACAO');
+      const dataVendaRaw=getC(row,'DATA_VENDA');
       return {
         TELEFONE_PORTADO:getC(row,'TELEFONE_PORTADO'),
         NUMERO_LINHA:getC(row,'NUMERO_LINHA'),
@@ -1758,8 +1759,8 @@ async function processarConectadas(file) {
         NOME:getC(row,'NOME'),
         PORTABILIDADE:getC(row,'PORTABILIDADE'),
         EQUIPE:getC(row,'EQUIPE'),
-        DATA_ATIVACAO:dataAtiv?dataAtiv.slice(0,10):null,
-        DATA_VENDA:dataVenda?dataVenda.slice(0,10):null,
+        DATA_ATIVACAO:converteData(dataAtivRaw),
+        DATA_VENDA:converteData(dataVendaRaw),
         PLANO:getC(row,'PLANO'),
         VENDEDOR:getC(row,'VENDEDOR'),
         PROPOSTA:getC(row,'PROPOSTA')
