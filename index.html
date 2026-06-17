@@ -1392,7 +1392,7 @@ function exportarRespostas(){const data=getRespostasFiltradas();if(!data.length)
 async function carregarHistorico(){
   if(!sb)return;
   try{
-  const{data,error}=await sb.from('historico_pagamentos').select('*').order('created_at',{ascending:false}).limit(2000);
+  const{data,error}=await sb.from('historico_pagamentos').select('*').order('id',{ascending:false}).limit(2000);
   if(error){console.warn('historico_pagamentos:',error.message);dadosHistorico=[];return;}
   dadosHistorico=data||[];
   const val=dadosHistorico.reduce((s,r)=>s+(parseFloat(r['VALOR'])||0),0);
@@ -1503,10 +1503,15 @@ async function processarArquivo(file){
     // Buscar GROSS da tabela conectadas (ativacoes do mes da safra)
     let grossConectadas = 0;
     try {
+      // DATA_ATIVACAO is stored as text YYYY-MM-DD, use text comparison
+      const mesStr=String(mesNum).padStart(2,'0');
+      const mesNextNum=mesNum===12?1:mesNum+1;
+      const anoNext=mesNum===12?anoNum+1:anoNum;
+      const mesNextStr=String(mesNextNum).padStart(2,'0');
       const {count} = await sb.from('conectadas')
         .select('*',{count:'exact',head:true})
-        .gte('DATA_ATIVACAO', anoNum+'-'+String(mesNum).padStart(2,'0')+'-01')
-        .lt('DATA_ATIVACAO', anoNum+'-'+String(mesNum===12?1:mesNum+1).padStart(2,'0')+'-01');
+        .gte('DATA_ATIVACAO', anoNum+'-'+mesStr+'-01')
+        .lt('DATA_ATIVACAO', anoNext+'-'+mesNextStr+'-01');
       grossConectadas = count||0;
     } catch(e){ console.warn('Erro ao buscar gross conectadas:',e); }
 
@@ -1628,7 +1633,7 @@ async function processarArquivo(file){
         // Identificar pagamentos automaticamente
         const pagamentos=registros.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='paga');
         for(const p of pagamentos){
-          try{await sb.from('historico_pagamentos').upsert({'SAFRA':p['SAFRA'],'CPF':p['CPF'],'NOME':p['NOME'],'NUMERO PORTADO':p['NUMERO PORTADO'],'FATURA':p['FATURA'],'VALOR':p['VALOR'],'VENCIMENTO':p['VENCIMENTO'],'DATA PAGAMENTO':new Date().toISOString().slice(0,10)},{onConflict:'SAFRA,NUMERO PORTADO,FATURA',ignoreDuplicates:true});}catch(e){}
+          try{await sb.from('historico_pagamentos').upsert({'SAFRA':p['SAFRA'],'CPF':p['CPF'],'NOME':p['NOME'],'NUMERO PORTADO':p['NUMERO PORTADO'],'FATURA':p['FATURA'],'VALOR':p['VALOR'],'VENCIMENTO':p['VENCIMENTO'],'DATA PAGAMENTO':new Date().toISOString().slice(0,10),'created_at':new Date().toISOString()},{onConflict:'SAFRA,NUMERO PORTADO,FATURA',ignoreDuplicates:true});}catch(e){}
         }
       }
     }
@@ -1752,6 +1757,9 @@ async function processarConectadas(file) {
     const registros=rows.map(row=>{
       const dataAtivRaw=getC(row,'DATA_ATIVACAO');
       const dataVendaRaw=getC(row,'DATA_VENDA');
+      // converteData normaliza para YYYY-MM-DD independente do formato de entrada
+      const dataAtivNorm=converteData(dataAtivRaw);
+      const dataVendaNorm=converteData(dataVendaRaw);
       return {
         TELEFONE_PORTADO:getC(row,'TELEFONE_PORTADO'),
         NUMERO_LINHA:getC(row,'NUMERO_LINHA'),
@@ -1759,8 +1767,8 @@ async function processarConectadas(file) {
         NOME:getC(row,'NOME'),
         PORTABILIDADE:getC(row,'PORTABILIDADE'),
         EQUIPE:getC(row,'EQUIPE'),
-        DATA_ATIVACAO:converteData(dataAtivRaw),
-        DATA_VENDA:converteData(dataVendaRaw),
+        DATA_ATIVACAO:dataAtivNorm,
+        DATA_VENDA:dataVendaNorm,
         PLANO:getC(row,'PLANO'),
         VENDEDOR:getC(row,'VENDEDOR'),
         PROPOSTA:getC(row,'PROPOSTA')
@@ -1809,7 +1817,13 @@ async function carregarGrossPorMes() {
     const {data,error}=await sb.from('conectadas').select('DATA_ATIVACAO').not('DATA_ATIVACAO','is',null);
     if(error||!data){div.innerHTML='<div class="alert alert-warn">Sem DATA_ATIVACAO. Faca o upload da base de conectadas.</div>';return;}
     const counts={};
-    data.forEach(r=>{const ym=(r.DATA_ATIVACAO||'').slice(0,7);if(ym)counts[ym]=(counts[ym]||0)+1;});
+    data.forEach(r=>{
+      let raw=r.DATA_ATIVACAO||'';
+      // Convert DD/MM/YYYY to YYYY-MM for grouping
+      if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)){const p=raw.split('/');raw=p[2]+'-'+p[1];}
+      else{raw=raw.slice(0,7);}
+      if(raw&&raw.length===7)counts[raw]=(counts[raw]||0)+1;
+    });
     const meses=Object.keys(counts).sort().reverse().slice(0,12);
     const ML={'01':'Janeiro','02':'Fevereiro','03':'Marco','04':'Abril','05':'Maio','06':'Junho',
                '07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro','11':'Novembro','12':'Dezembro'};
