@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v30</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v31</span>
     </div>
   </div>
 </nav>
@@ -758,14 +758,25 @@ function classificarEstorno(cliente, safraDate) {
   if (!safraDate) return {estorno: false, tipo: 'SEM DATA SAFRA'};
   if (!venc1Str)  return {estorno: false, tipo: 'SEM ESTORNO'};
 
-  const venc1 = new Date(venc1Str);
-  const mes   = venc1.getMonth() + 1; // 1=Jan, 3=Mar, 4=Apr, 5=Mai, 6=Jun
+  const fechamento = getFechamento(safraDate); // safra + 3 meses
+  // fechamento - 2 meses = limite para 2 faturas (ex: Abr para safra Marco)
+  const lim2mes = fechamento.getMonth() - 2; // pode ser negativo
+  const lim2ano = lim2mes < 0 ? fechamento.getFullYear() - 1 : fechamento.getFullYear();
+  const lim2    = (lim2mes + 12) % 12 + 1; // mes 1-12
+  // fechamento - 1 mes = limite para 1 fatura (ex: Mai para safra Marco)
+  const lim1mes = fechamento.getMonth() - 1;
+  const lim1ano = lim1mes < 0 ? fechamento.getFullYear() - 1 : fechamento.getFullYear();
+  const lim1    = (lim1mes + 12) % 12 + 1; // mes 1-12
+
+  const venc1    = new Date(venc1Str);
+  const vMes     = venc1.getMonth() + 1; // 1-12
+  const vAno     = venc1.getFullYear();
 
   const ab = v => v === 'Aberta';
   const pg = v => v !== '' && v !== 'nan' && v !== 'null' && v !== 'Aberta';
 
-  // Venc 1a em Mar ou Abr = 2 FATURAS (verifica 1a e 2a)
-  if (mes === 3 || mes === 4) {
+  // Venc 1a <= fechamento-2 = 2 FATURAS (ex: Mar/Abr para safra Marco)
+  if (vAno < lim2ano || (vAno === lim2ano && vMes <= lim2)) {
     if (ab(s1) && ab(s2)) return {estorno: true,  tipo: '2 FATURAS (2 ABERTA)'};
     if (pg(s1) && ab(s2)) return {estorno: true,  tipo: '2 FATURAS (1 PAGA 2 ABERTA)'};
     if (ab(s1) && pg(s2)) return {estorno: true,  tipo: '2 FATURAS (1 ABERTO 2 PAGA)'};
@@ -775,13 +786,13 @@ function classificarEstorno(cliente, safraDate) {
     if (pg(s1)) return {estorno: false, tipo: '1 FATURA PAGA'};
   }
 
-  // Venc 1a em Mai = 1 FATURA (ignora 2a completamente)
-  if (mes === 5) {
+  // Venc 1a = fechamento-1 = 1 FATURA (ex: Mai para safra Marco - ignora 2a)
+  if (vAno === lim1ano && vMes === lim1) {
     if (ab(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
     if (pg(s1)) return {estorno: false, tipo: '1 FATURA PAGA'};
   }
 
-  // Venc 1a em Jun+ = SEM ESTORNO
+  // Venc 1a >= fechamento = SEM ESTORNO
   return {estorno: false, tipo: 'SEM ESTORNO'};
 }
 
