@@ -748,29 +748,58 @@ function classificarTipoFatura(r) {
 }
 
 function classificarEstorno(cliente, safraDate) {
-  if ((cliente['STATUS ACESSO'] || '') !== 'Ativo') {
-    return {estorno: false, tipo: 'CANCELADO'};
-  }
+  const statusAcesso = (cliente['STATUS ACESSO'] || '').trim();
+  const s1 = (cliente['STATUS 1\u00aa FATURA'] || '').trim();
+  const s2 = (cliente['STATUS 2\u00aa FATURA'] || '').trim();
+  // Usa VENCIMENTO 1A FATURA (venc da 1a fatura independente de status)
+  const venc1Str = cliente['VENCIMENTO 1A FATURA'] || cliente['VENCIMENTO'] || '';
+
+  // Cancelado = SEMPRE estorno
+  if (statusAcesso !== 'Ativo') return {estorno: true, tipo: 'CANCELADO'};
   if (!safraDate) return {estorno: false, tipo: 'SEM DATA SAFRA'};
+  if (!venc1Str)  return {estorno: false, tipo: 'SEM ESTORNO'};
 
   const fechamento = getFechamento(safraDate);
-  const limite2fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 2, 1);
-  const limite1fat = new Date(fechamento.getFullYear(), fechamento.getMonth() - 1, 1);
+  // limite2 = fechamento - 2 meses (Abril para safra Marco)
+  const lim2m = fechamento.getMonth() - 2;
+  const lim2y = lim2m < 0 ? fechamento.getFullYear() - 1 : fechamento.getFullYear();
+  const lim2  = new Date(lim2y, (lim2m + 12) % 12, 1);
+  // limite1 = fechamento - 1 mes (Maio para safra Marco)
+  const lim1m = fechamento.getMonth() - 1;
+  const lim1y = lim1m < 0 ? fechamento.getFullYear() - 1 : fechamento.getFullYear();
+  const lim1  = new Date(lim1y, (lim1m + 12) % 12, 1);
 
-  const vencStr = cliente['VENCIMENTO'] || '';
-  const venc = vencStr ? new Date(vencStr) : null;
+  const venc1  = new Date(venc1Str);
+  const venc1m = new Date(venc1.getFullYear(), venc1.getMonth(), 1);
 
-  // Tipo de fatura baseado nas colunas STATUS 1\u00aa FATURA e STATUS 2\u00aa FATURA
-  const tipoFat = classificarTipoFatura(cliente);
-  const temAberta = tipoFat.includes('ABERTA') || tipoFat === '1 FATURA ABERTA';
+  const temF2  = s2 !== '' && s2 !== 'nan' && s2 !== 'null';
+  const aberta = v => v === 'Aberta';
+  const paga   = v => v !== '' && v !== 'nan' && v !== 'null' && v !== 'Aberta';
 
-  if (!temAberta) return {estorno: false, tipo: tipoFat};
-  if (!venc) return {estorno: false, tipo: 'SEM ESTORNO'};
+  // Venc <= Abr: precisa 2 faturas pagas
+  if (venc1m <= lim2) {
+    if (!temF2) {
+      if (aberta(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
+      if (paga(s1))   return {estorno: false, tipo: '1 FATURA PAGA'};
+    } else {
+      if (aberta(s1) && aberta(s2)) return {estorno: true,  tipo: '2 FATURAS (2 ABERTA)'};
+      if (aberta(s1) && paga(s2))   return {estorno: true,  tipo: '2 FATURAS (1 ABERTO 2 PAGA)'};
+      if (paga(s1)   && aberta(s2)) return {estorno: true,  tipo: '2 FATURAS (1 PAGA 2 ABERTA)'};
+      if (paga(s1)   && paga(s2))   return {estorno: false, tipo: '2 FATURAS - 2 PGS'};
+    }
+  }
+  // Venc = Mai: precisa so 1 fatura paga (a 1a)
+  else if (venc1m.getTime() === lim1.getTime()) {
+    if (aberta(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
+    if (paga(s1) && temF2 && aberta(s2)) return {estorno: false, tipo: '2 FATURAS (1 PAGA 2 ABERTA)'};
+    if (paga(s1) && temF2 && paga(s2))   return {estorno: false, tipo: '2 FATURAS - 2 PGS'};
+    if (paga(s1)) return {estorno: false, tipo: '1 FATURA PAGA'};
+  }
+  // Venc >= Jun: sem estorno
+  else {
+    return {estorno: false, tipo: 'SEM ESTORNO'};
+  }
 
-  const vencMes = new Date(venc.getFullYear(), venc.getMonth(), 1);
-
-  if (vencMes <= limite2fat) return {estorno: true, tipo: tipoFat};
-  if (vencMes.getTime() === limite1fat.getTime()) return {estorno: true, tipo: tipoFat};
   return {estorno: false, tipo: 'SEM ESTORNO'};
 }
 
