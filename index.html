@@ -1722,7 +1722,7 @@ async function processarArquivo(file) {
       await sb.from('controle_envio').delete().eq('SAFRA', safra);
     }
 
-    // 5. INSERT em batches de 500 (upsert com conflict)
+    // 5. INSERT em batches de 500 (DELETE feito antes no modo nova)
     let inseridos = 0, erros = 0;
     const VALID_COLS = new Set([
       'SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','NUMERO LINHA',
@@ -1746,8 +1746,7 @@ async function processarArquivo(file) {
         return o;
       });
 
-      const {error} = await sb.from('controle_envio')
-        .upsert(batch, {onConflict: 'NUMERO DE ACESSO,FATURA,SAFRA', ignoreDuplicates: false});
+      const {error} = await sb.from('controle_envio').insert(batch);
 
       if (error) {
         erros += batch.length;
