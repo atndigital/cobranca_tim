@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v26</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v27</span>
     </div>
   </div>
 </nav>
@@ -1494,8 +1494,9 @@ function parseValor(v) {
   return isNaN(n) ? null : n;
 }
 
-function calcEtapa(dias, portabilidade, statusAcesso, temFaturaAberta) {
-  if (statusAcesso !== 'Ativo' || !temFaturaAberta) return null;
+function calcEtapa(dias, portabilidade, statusAcesso, temFaturaAberta, ehEstorno) {
+  // So entra no fluxo de cobranca se for estorno
+  if (statusAcesso !== 'Ativo' || !temFaturaAberta || !ehEstorno) return null;
   const conc = portabilidade === 'Portabilidade Concluida';
   if (dias <= -2) return 'Preventivo';
   if (dias >= 0 && dias <= 6) return null;
@@ -1561,8 +1562,9 @@ function parseValor(v) {
 }
 
 // Determinar etapa pelo dias de atraso e portabilidade
-function calcEtapa(dias, portabilidade, statusAcesso, temFaturaAberta) {
-  if (statusAcesso !== 'Ativo' || !temFaturaAberta) return null;
+function calcEtapa(dias, portabilidade, statusAcesso, temFaturaAberta, ehEstorno) {
+  // So entra no fluxo de cobranca se for estorno
+  if (statusAcesso !== 'Ativo' || !temFaturaAberta || !ehEstorno) return null;
   const conc = portabilidade === 'Portabilidade Concluida';
   if (dias <= -2) return 'Preventivo';
   if (dias >= 0 && dias <= 6) return null;
@@ -1710,7 +1712,7 @@ async function processarArquivo(file) {
       }
 
       const temAberta = faturas.length > 0;
-      const etapa = calcEtapa(diasAtraso, portabilidade, statusAces, temAberta);
+      const etapa = calcEtapa(diasAtraso, portabilidade, statusAces, temAberta, ehEstorno);
       const tipoEstorno = statusAces !== 'Ativo' ? 'CANCELADO' : calcTipoEstorno(s1, s2);
       const ehEstorno = statusAces === 'Ativo' && (s1 === 'Aberta' || s2 === 'Aberta');
 
