@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v14</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v16</span>
     </div>
   </div>
 </nav>
@@ -1652,7 +1652,10 @@ async function processarArquivo(file) {
       const equipe        = matched ? matched.equipe : '';
       const nomeCon       = matched ? matched.nome : '';
 
-      // Fatura mais urgente (aberta com menor vencimento)
+      // Vencimento da 1a fatura - base EXCLUSIVA para regra de estorno
+      const venc1 = parseDateBR(row['1\u00c2\u00aa fatura - Data de vencimento']||'');
+
+      // Fatura mais urgente (aberta com menor vencimento) - para exibicao e disparo
       const faturas = [];
       [[s1,'1\u00c2\u00aa'],[s2,'2\u00c2\u00aa'],[s3,'3\u00c2\u00aa']].forEach(([st,pref]) => {
         if (st === 'Aberta') {
@@ -1699,7 +1702,7 @@ async function processarArquivo(file) {
         'STATUS 2\u00aa FATURA': s2 || null,
         'STATUS PAGAMENTO': fatStatus,
         'VALOR':            fatVal,
-        'VENCIMENTO':       fatVenc,
+        'VENCIMENTO':       venc1,
         'DIAS ATRASO':      diasAtraso || null,
         'LINHA DIGITAVEL':  fatLinha || null,
         'PORTABILIDADE':    portabilidade,
@@ -1804,7 +1807,40 @@ async function processarArquivo(file) {
 
 function setUploadProgress(show,text,pct){const div=document.getElementById('upload-progress');div.style.display=show?'block':'none';document.getElementById('upload-status-text').textContent=text;document.getElementById('upload-bar').style.width=pct+'%';document.getElementById('upload-detail').textContent=show?Math.round(pct)+'% concluido':'';}
 function lerArquivoLatin1(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>resolve(e.target.result);reader.onerror=reject;reader.readAsText(file,'latin1');});}
-function parseCSV(text){const lines=text.split('\n').filter(l=>l.trim());if(lines.length<2)return[];const sep=lines[0].includes(';')?';':',';const headers=lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));return lines.slice(1).filter(l=>l.trim()).map(line=>{const vals=line.split(sep).map(v=>v.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,i)=>obj[h]=vals[i]||'');return obj;});}
+function parseCSV(text){
+  // Robust RFC4180 parser - handles quoted fields with commas inside
+  function parseLine(line, sep) {
+    const fields = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (c === '"') {
+        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
+        else inQ = !inQ;
+      } else if (c === sep && !inQ) {
+        fields.push(cur); cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    fields.push(cur);
+    return fields;
+  }
+  const lines = text.split('\n');
+  const nonEmpty = lines.filter(l => l.trim());
+  if (nonEmpty.length < 2) return [];
+  const sep = nonEmpty[0].includes(';') ? ';' : ',';
+  const headers = parseLine(nonEmpty[0], sep).map(h => h.trim());
+  const result = [];
+  for (let i = 1; i < nonEmpty.length; i++) {
+    if (!nonEmpty[i].trim()) continue;
+    const vals = parseLine(nonEmpty[i], sep);
+    const obj = {};
+    headers.forEach((h, j) => { obj[h] = (vals[j]||'').trim(); });
+    result.push(obj);
+  }
+  return result;
+}
 function limpaTel(v){return String(v||'').replace(/\D/g,'').slice(-11);}
 function converteData(v){if(!v)return null;const p=v.split('/');if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return v;}
 function determinarEtapa(dias,portabilidade,statusAcesso,statusFatura){
