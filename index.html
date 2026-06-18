@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v32</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v34</span>
     </div>
   </div>
 </nav>
@@ -1748,6 +1748,13 @@ async function processarArquivo(file) {
       });
     });
 
+    // DEBUG: contar estorno antes de salvar
+    const _estCount = registros.filter(r => r['ESTORNO'] === true).length;
+    const _tipoCount = {};
+    registros.forEach(r => { const t = r['TIPO_ESTORNO']||'?'; _tipoCount[t] = (_tipoCount[t]||0)+1; });
+    console.log('ANTES DE SALVAR - Estorno:', _estCount, 'de', registros.length);
+    console.log('Tipos:', JSON.stringify(_tipoCount));
+
     setUploadProgress(true,
       fmt(registros.length) + ' validos, ' + fmt(descartados) + ' descartados. Enviando...', 45);
 
@@ -1765,20 +1772,67 @@ async function processarArquivo(file) {
       'PORTABILIDADE','EQUIPE','ETAPA','ESTORNO','TIPO_ESTORNO','DATA PROCESSAMENTO'
     ]);
 
+    const INT_COLS = new Set(['DIAS ATRASO']);
+    const NUM_COLS = new Set(['VALOR']);
+    const BIG_COLS = new Set(['FATURA']);
+    const coerce = (r) => {
+      const o = {};
+      Object.keys(r).forEach(k => {
+        if (!VALID_COLS.has(k)) return;
+        let v = r[k];
+        if (v === '' || v === undefined || v === null || v === 'nan' || v === 'null') { o[k] = null; return; }
+        if (BIG_COLS.has(k) || NUM_COLS.has(k)) { const n = parseFloat(v); o[k] = isNaN(n) ? null : n; return; }
+        if (INT_COLS.has(k)) { const n = parseInt(v); o[k] = isNaN(n) ? null : n; return; }
+        o[k] = v;
+      });
+      return o;
+    };
+
+    // MODO ATUALIZAR: faz UPDATE por NUMERO DE ACESSO (nao duplica)
+    if (modo === 'atualizar') {
+      for (let i = 0; i < registros.length; i++) {
+        const pct = 45 + (i / registros.length * 50);
+        if (i % 50 === 0) setUploadProgress(true, 'Atualizando ' + (i+1) + '/' + registros.length + '...', pct);
+        const r = coerce(registros[i]);
+        const numAcesso = r['NUMERO DE ACESSO'];
+        if (!numAcesso) { erros++; continue; }
+        // Atualiza apenas campos de status (mantem o resto)
+        const updateData = {
+          'STATUS ACESSO':    r['STATUS ACESSO'],
+          'STATUS 1\u00aa FATURA': r['STATUS 1\u00aa FATURA'],
+          'STATUS 2\u00aa FATURA': r['STATUS 2\u00aa FATURA'],
+          'STATUS PAGAMENTO': r['STATUS PAGAMENTO'],
+          'VALOR':            r['VALOR'],
+          'VENCIMENTO':       r['VENCIMENTO'],
+          'VENCIMENTO 1A FATURA': r['VENCIMENTO 1A FATURA'],
+          'DIAS ATRASO':      r['DIAS ATRASO'],
+          'FATURA':           r['FATURA'],
+          'LINHA DIGITAVEL':  r['LINHA DIGITAVEL'],
+          'ETAPA':            r['ETAPA'],
+          'ESTORNO':          r['ESTORNO'],
+          'TIPO_ESTORNO':     r['TIPO_ESTORNO'],
+          'DATA PROCESSAMENTO': r['DATA PROCESSAMENTO']
+        };
+        const {error} = await sb.from('controle_envio').update(updateData)
+          .eq('SAFRA', safra).eq('NUMERO DE ACESSO', numAcesso);
+        if (error) { erros++; console.error('Update error:', error.message); }
+        else inseridos++;
+      }
+      setUploadProgress(false, '', 100);
+      const msg = 'Status atualizado! ' + fmt(inseridos) + ' registros' + (erros > 0 ? ' - ' + fmt(erros) + ' erros' : '');
+      result.innerHTML = '<div class="alert alert-ok">' + msg + '</div>';
+      await carregarControle();
+      atualizarDashboard();
+      return;
+    }
+
+    // MODO NOVA: INSERT em batches
     for (let i = 0; i < registros.length; i += 500) {
       const pct = 45 + (i / registros.length * 50);
       setUploadProgress(true,
         'Enviando lote ' + (Math.floor(i/500)+1) + '/' + Math.ceil(registros.length/500) + '...', pct);
 
-      const batch = registros.slice(i, i+500).map(r => {
-        const o = {};
-        Object.keys(r).forEach(k => {
-          if (VALID_COLS.has(k)) {
-            o[k] = (r[k] === '' || r[k] === 'nan' || r[k] === undefined) ? null : r[k];
-          }
-        });
-        return o;
-      });
+      const batch = registros.slice(i, i+500).map(coerce);
 
       const {error} = await sb.from('controle_envio').insert(batch);
 
