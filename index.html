@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v24</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v25</span>
     </div>
   </div>
 </nav>
@@ -1649,7 +1649,10 @@ async function processarArquivo(file) {
       const nomeCon       = matched ? matched.nome : '';
 
       // Vencimento da 1a fatura - base EXCLUSIVA para regra de estorno
-      const venc1fatura = parseDateBR(row['1\u00c2\u00aa fatura - Data de vencimento']||'');
+      const _raw1venc = row['1\u00c2\u00aa fatura - Data de vencimento']||'';
+      const venc1fatura = parseDateBR(_raw1venc);
+      // Debug: log first 3 rows to check
+      if (registros.length < 3) console.log('venc1 raw:', _raw1venc, '-> parsed:', venc1fatura, 'row keys sample:', Object.keys(row).slice(7,12));
 
       // Fatura mais urgente (aberta com menor vencimento) - para exibicao e disparo
       const faturas = [];
