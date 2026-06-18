@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v18</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v23</span>
     </div>
   </div>
 </nav>
@@ -844,22 +844,18 @@ function calcularEstornoPorSafra(safra) {
     '2 FATURAS (2 ABERTA)': 0,
     '2 FATURAS (1 PAGA 2 ABERTA)': 0,
     '2 FATURAS (1 ABERTO 2 PAGA)': 0,
-    'CANCELADO': 0
+    'CANCELADO': 0,
+    'SEM DATA SAFRA': 0
   };
 
   let estornoClientes = [], semEstorno = [];
 
-  // Cancelados SAO estorno
-  cancelados.forEach(r => {
-    estornoClientes.push(r);
-  });
-  det['CANCELADO'] = cancelados.length;
-
-  ativos.forEach(r => {
-    const res = classificarEstorno(r, safraDate);
-    if (res.estorno) estornoClientes.push(r);
+  // Usar campo ESTORNO e TIPO_ESTORNO salvos no banco (calculados no upload)
+  dados.forEach(r => {
+    const tipo = r['TIPO_ESTORNO'] || 'SEM ESTORNO';
+    const ehEstorno = r['ESTORNO'] === true;
+    if (ehEstorno) estornoClientes.push(r);
     else semEstorno.push(r);
-    const tipo = res.tipo;
     if (det[tipo] !== undefined) det[tipo]++;
     else det['SEM ESTORNO']++;
   });
@@ -1690,27 +1686,28 @@ async function processarArquivo(file) {
       const ehEstorno = statusAces === 'Ativo' && (s1 === 'Aberta' || s2 === 'Aberta');
 
       registros.push({
-        'SAFRA':            safra,
-        'CPF':              cpf,
-        'NOME':             nomeCon,
-        'NUMERO DE ACESSO': numAcesso,
-        'NUMERO PORTADO':   numAcesso,
-        'NUMERO LINHA':     numAcesso,
-        'STATUS ACESSO':    statusAces,
-        'FATURA':           fatNum,
-        'STATUS 1\u00aa FATURA': s1 || null,
-        'STATUS 2\u00aa FATURA': s2 || null,
-        'STATUS PAGAMENTO': fatStatus,
-        'VALOR':            fatVal,
-        'VENCIMENTO':       venc1,
-        'DIAS ATRASO':      diasAtraso || null,
-        'LINHA DIGITAVEL':  fatLinha || null,
-        'PORTABILIDADE':    portabilidade,
-        'EQUIPE':           equipe || null,
-        'ETAPA':            etapa,
-        'ESTORNO':          ehEstorno,
-        'TIPO_ESTORNO':     tipoEstorno,
-        'DATA PROCESSAMENTO': dataProc || null
+        'SAFRA':                safra,
+        'CPF':                  cpf,
+        'NOME':                 nomeCon,
+        'NUMERO DE ACESSO':     numAcesso,
+        'NUMERO PORTADO':       numAcesso,
+        'NUMERO LINHA':         numAcesso,
+        'STATUS ACESSO':        statusAces,
+        'FATURA':               fatNum,
+        'STATUS 1\u00aa FATURA':   s1 || null,
+        'STATUS 2\u00aa FATURA':   s2 || null,
+        'STATUS PAGAMENTO':     fatStatus,
+        'VALOR':                fatVal,
+        'VENCIMENTO':           fatVenc,        // fatura mais urgente - para disparo
+        'VENCIMENTO 1A FATURA': venc1fatura,    // 1a fatura - para regra de estorno
+        'DIAS ATRASO':          diasAtraso || null,
+        'LINHA DIGITAVEL':      fatLinha || null,
+        'PORTABILIDADE':        portabilidade,
+        'EQUIPE':               equipe || null,
+        'ETAPA':                etapa,
+        'ESTORNO':              ehEstorno,
+        'TIPO_ESTORNO':         tipoEstorno,
+        'DATA PROCESSAMENTO':   dataProc || null
       });
     });
 
@@ -1750,7 +1747,11 @@ async function processarArquivo(file) {
 
       if (error) {
         erros += batch.length;
-        console.error('Batch error:', error.message, error.details);
+        console.error('Batch error:', error.message, error.details, error.hint);
+        // Log first record of failed batch for debugging
+        if (erros === batch.length) {
+          console.error('First record sample:', JSON.stringify(batch[0]));
+        }
       } else {
         inseridos += batch.length;
       }
