@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v28</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v30</span>
     </div>
   </div>
 </nav>
@@ -753,42 +753,35 @@ function classificarEstorno(cliente, safraDate) {
   const s2 = (cliente['STATUS 2\u00aa FATURA'] || '').trim();
   const venc1Str = cliente['VENCIMENTO 1A FATURA'] || cliente['VENCIMENTO'] || '';
 
+  // Cancelado = SEMPRE estorno
   if (statusAcesso !== 'Ativo') return {estorno: true, tipo: 'CANCELADO'};
   if (!safraDate) return {estorno: false, tipo: 'SEM DATA SAFRA'};
   if (!venc1Str)  return {estorno: false, tipo: 'SEM ESTORNO'};
 
-  const fechamento = getFechamento(safraDate);
-  const lim2 = new Date(fechamento.getFullYear(), fechamento.getMonth() - 2, 1); // Abr
-  const lim1 = new Date(fechamento.getFullYear(), fechamento.getMonth() - 1, 1); // Mai
+  const venc1 = new Date(venc1Str);
+  const mes   = venc1.getMonth() + 1; // 1=Jan, 3=Mar, 4=Apr, 5=Mai, 6=Jun
 
-  const venc1m = new Date(new Date(venc1Str).getFullYear(), new Date(venc1Str).getMonth(), 1);
+  const ab = v => v === 'Aberta';
+  const pg = v => v !== '' && v !== 'nan' && v !== 'null' && v !== 'Aberta';
 
-  const temF2  = s2 !== '' && s2 !== 'nan' && s2 !== 'null';
-  const aberta = v => v === 'Aberta';
-  const paga   = v => v !== '' && v !== 'nan' && v !== 'null' && v !== 'Aberta';
-
-  // Venc 1a <= Abr: considera 1a E 2a fatura
-  if (venc1m <= lim2) {
-    if (!temF2) {
-      if (aberta(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
-      if (paga(s1))   return {estorno: false, tipo: '1 FATURA PAGA'};
-    } else {
-      if (aberta(s1) && aberta(s2)) return {estorno: true,  tipo: '2 FATURAS (2 ABERTA)'};
-      if (aberta(s1) && paga(s2))   return {estorno: true,  tipo: '2 FATURAS (1 ABERTO 2 PAGA)'};
-      if (paga(s1)   && aberta(s2)) return {estorno: true,  tipo: '2 FATURAS (1 PAGA 2 ABERTA)'};
-      if (paga(s1)   && paga(s2))   return {estorno: false, tipo: '2 FATURAS - 2 PGS'};
-    }
-  }
-  // Venc 1a = Mai: considera SOMENTE a 1a fatura (ignora a 2a completamente)
-  else if (venc1m.getTime() === lim1.getTime()) {
-    if (aberta(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
-    if (paga(s1))   return {estorno: false, tipo: '1 FATURA PAGA'};
-  }
-  // Venc 1a >= Jun: sem estorno
-  else {
-    return {estorno: false, tipo: 'SEM ESTORNO'};
+  // Venc 1a em Mar ou Abr = 2 FATURAS (verifica 1a e 2a)
+  if (mes === 3 || mes === 4) {
+    if (ab(s1) && ab(s2)) return {estorno: true,  tipo: '2 FATURAS (2 ABERTA)'};
+    if (pg(s1) && ab(s2)) return {estorno: true,  tipo: '2 FATURAS (1 PAGA 2 ABERTA)'};
+    if (ab(s1) && pg(s2)) return {estorno: true,  tipo: '2 FATURAS (1 ABERTO 2 PAGA)'};
+    if (pg(s1) && pg(s2)) return {estorno: false, tipo: '2 FATURAS - 2 PGS'};
+    // Sem 2a fatura
+    if (ab(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
+    if (pg(s1)) return {estorno: false, tipo: '1 FATURA PAGA'};
   }
 
+  // Venc 1a em Mai = 1 FATURA (ignora 2a completamente)
+  if (mes === 5) {
+    if (ab(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
+    if (pg(s1)) return {estorno: false, tipo: '1 FATURA PAGA'};
+  }
+
+  // Venc 1a em Jun+ = SEM ESTORNO
   return {estorno: false, tipo: 'SEM ESTORNO'};
 }
 
@@ -1701,9 +1694,22 @@ async function processarArquivo(file) {
       }
 
       const temAberta = faturas.length > 0;
+
+      // Calcular estorno PRIMEIRO pois etapa depende disso
+      const _safraDate = parseSafra(safra);
+      const _tmpCliente = {
+        'STATUS ACESSO': statusAces,
+        'STATUS 1\u00aa FATURA': s1,
+        'STATUS 2\u00aa FATURA': s2,
+        'VENCIMENTO 1A FATURA': venc1fatura
+      };
+      const _estResult  = classificarEstorno(_tmpCliente, _safraDate);
+      const ehEstorno   = _estResult.estorno;
+      const tipoEstorno = _estResult.tipo;
+
+      // Etapa: so atribui se for estorno
       const etapa = calcEtapa(diasAtraso, portabilidade, statusAces, temAberta, ehEstorno);
-      const tipoEstorno = statusAces !== 'Ativo' ? 'CANCELADO' : calcTipoEstorno(s1, s2);
-      const ehEstorno = statusAces === 'Ativo' && (s1 === 'Aberta' || s2 === 'Aberta');
+
 
       registros.push({
         'SAFRA':                safra,
