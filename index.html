@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v38</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v39</span>
     </div>
   </div>
 </nav>
@@ -710,16 +710,24 @@ function switchTab(id, navId) {
 // CARREGAR TUDO
 async function recarregarTudo() {
   if (!sb) return;
-  mostrarLoading('Carregando dados...');
-  await Promise.all([
-    carregarControle(),
-    carregarHistorico(),
-    carregarHistEnvios(),
-    carregarRespostasData(),
-    carregarSnapshots()
-  ]);
+  const t0 = Date.now();
+  mostrarLoading('Carregando controle...');
+  // 1. Carregar controle PRIMEIRO e mostrar dashboard imediatamente
+  await carregarControle();
+  console.log('controle carregado em', ((Date.now()-t0)/1000).toFixed(1)+'s', '-', dadosControle.length, 'registros');
+  mostrarLoading('Carregando snapshots...');
+  await carregarSnapshots();
   atualizarDashboard();
   ocultarLoading();
+  console.log('dashboard pronto em', ((Date.now()-t0)/1000).toFixed(1)+'s');
+  // 2. Carregar o resto em segundo plano (nao bloqueia a tela)
+  Promise.all([
+    carregarHistorico(),
+    carregarHistEnvios(),
+    carregarRespostasData()
+  ]).then(() => {
+    atualizarDashboard();
+  }).catch(e => console.warn('Carregamento secundario:', e.message));
 }
 
 // SNAPSHOTS
@@ -1092,12 +1100,14 @@ function downloadSiebel(safra) {
 async function carregarControle() {
   if (!sb) return;
   let todos = [], offset = 0;
+  const BATCH = 2000;
   while (true) {
-    const {data} = await sb.from('controle_envio').select('*').range(offset, offset+999);
+    const {data, error} = await sb.from('controle_envio').select('*').range(offset, offset+BATCH-1);
+    if (error) { console.warn('carregarControle:', error.message); break; }
     if (!data||!data.length) break;
     todos.push(...data);
-    if (data.length < 1000) break;
-    offset += 1000;
+    if (data.length < BATCH) break;
+    offset += BATCH;
   }
   dadosControle = todos;
   const safras = [...new Set(todos.map(r => r['SAFRA']).filter(Boolean))].sort();
