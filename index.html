@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v40</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v41</span>
     </div>
   </div>
 </nav>
@@ -1100,13 +1100,13 @@ function downloadSiebel(safra) {
 async function carregarControle() {
   if (!sb) return;
   let todos = [], offset = 0;
-  const BATCH = 2000;
+  const BATCH = 1000; // limite real do Supabase por request
   while (true) {
     const {data, error} = await sb.from('controle_envio').select('*').range(offset, offset+BATCH-1);
     if (error) { console.warn('carregarControle:', error.message); break; }
-    if (!data||!data.length) break;
+    if (!data || data.length === 0) break;
     todos.push(...data);
-    if (data.length < BATCH) break;
+    if (data.length < BATCH) break; // ultima pagina
     offset += BATCH;
   }
   dadosControle = todos;
