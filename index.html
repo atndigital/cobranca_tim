@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v36</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v38</span>
     </div>
   </div>
 </nav>
@@ -763,6 +763,10 @@ function classificarEstorno(cliente, safraDate) {
   if (statusAcesso !== 'Ativo') return {estorno: true, tipo: 'CANCELADO'};
   if (!safraDate) return {estorno: false, tipo: 'SEM DATA SAFRA'};
   if (!venc1Str)  return {estorno: false, tipo: 'SEM ESTORNO'};
+
+  // Protecao contra data corrompida (ano < 2026) = SEM ESTORNO
+  const _vAno = new Date(venc1Str).getFullYear();
+  if (isNaN(_vAno) || _vAno < 2026) return {estorno: false, tipo: 'SEM ESTORNO'};
 
   const fechamento = getFechamento(safraDate); // safra + 3 meses
   // fechamento - 2 meses = limite para 2 faturas (ex: Abr para safra Marco)
@@ -1721,6 +1725,7 @@ async function processarArquivo(file) {
         'ETAPA':                etapa,
         'ESTORNO':              ehEstorno,
         'TIPO_ESTORNO':         tipoEstorno,
+        'ACIONAVEL':            (statusAces === 'Ativo' && temAberta),
         'DATA PROCESSAMENTO':   dataProc || null
       });
     });
@@ -1746,7 +1751,7 @@ async function processarArquivo(file) {
       'SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','NUMERO LINHA',
       'STATUS ACESSO','FATURA','STATUS 1\u00aa FATURA','STATUS 2\u00aa FATURA',
       'STATUS PAGAMENTO','VALOR','VENCIMENTO','VENCIMENTO 1A FATURA','DIAS ATRASO','LINHA DIGITAVEL',
-      'PORTABILIDADE','EQUIPE','ETAPA','ESTORNO','TIPO_ESTORNO','DATA PROCESSAMENTO'
+      'PORTABILIDADE','EQUIPE','ETAPA','ESTORNO','TIPO_ESTORNO','ACIONAVEL','DATA PROCESSAMENTO'
     ]);
 
     const INT_COLS = new Set(['DIAS ATRASO']);
@@ -1765,15 +1770,64 @@ async function processarArquivo(file) {
       return o;
     };
 
-    // MODO ATUALIZAR: faz UPDATE por NUMERO DE ACESSO (nao duplica)
+    // MODO ATUALIZAR: faz UPDATE por NUMERO DE ACESSO (nao duplica) + detecta pagamentos
     if (modo === 'atualizar') {
+      // 1. Buscar estado ATUAL do banco para comparar (detectar pagamentos)
+      setUploadProgress(true, 'Carregando estado atual para comparar...', 40);
+      const estadoAntes = {};
+      let _from = 0;
+      while (true) {
+        const { data, error } = await sb.from('controle_envio')
+          .select('"NUMERO DE ACESSO","STATUS PAGAMENTO","STATUS 1\u00aa FATURA","STATUS 2\u00aa FATURA","ETAPA","VALOR","FATURA","CPF","NOME","NUMERO PORTADO","VENCIMENTO","PORTABILIDADE","DIAS ATRASO"')
+          .eq('SAFRA', safra).range(_from, _from + 999);
+        if (error || !data || data.length === 0) break;
+        data.forEach(d => { estadoAntes[d['NUMERO DE ACESSO']] = d; });
+        if (data.length < 1000) break;
+        _from += 1000;
+      }
+
+      const pagamentosDetectados = [];
+      const hoje = new Date().toISOString().slice(0,10);
+
       for (let i = 0; i < registros.length; i++) {
         const pct = 45 + (i / registros.length * 50);
         if (i % 50 === 0) setUploadProgress(true, 'Atualizando ' + (i+1) + '/' + registros.length + '...', pct);
         const r = coerce(registros[i]);
         const numAcesso = r['NUMERO DE ACESSO'];
         if (!numAcesso) { erros++; continue; }
-        // Atualiza apenas campos de status (mantem o resto)
+
+        // Detectar pagamento: estava Aberta no banco e agora esta Paga
+        const antes = estadoAntes[numAcesso];
+        if (antes) {
+          const eraAberta = antes['STATUS PAGAMENTO'] === 'Aberta';
+          const agoraPaga = r['STATUS PAGAMENTO'] !== 'Aberta' && r['STATUS PAGAMENTO'];
+          if (eraAberta && agoraPaga) {
+            // Cliente pagou! Registrar
+            let diasAte = null;
+            if (antes['VENCIMENTO']) {
+              const venc = new Date(antes['VENCIMENTO']);
+              const dt = new Date(hoje);
+              diasAte = Math.round((dt - venc) / 86400000);
+            }
+            pagamentosDetectados.push({
+              'SAFRA': safra,
+              'CPF': antes['CPF'] || r['CPF'],
+              'NOME': antes['NOME'] || r['NOME'],
+              'NUMERO DE ACESSO': numAcesso,
+              'NUMERO PORTADO': antes['NUMERO PORTADO'] || r['NUMERO PORTADO'],
+              'FATURA': antes['FATURA'] || r['FATURA'],
+              'VALOR': antes['VALOR'] || r['VALOR'],
+              'VENCIMENTO': antes['VENCIMENTO'] || null,
+              'PORTABILIDADE': antes['PORTABILIDADE'] || r['PORTABILIDADE'],
+              'ETAPA NO PAGAMENTO': antes['ETAPA'] || 'Sem etapa',
+              'TIPO DE ENVIO': 'Atualizacao RPA',
+              'DATA PAGAMENTO': hoje,
+              'DIAS AT\u00c9 PAGAMENTO': diasAte
+            });
+          }
+        }
+
+        const _acionavel = (r['STATUS ACESSO'] === 'Ativo' && r['STATUS PAGAMENTO'] === 'Aberta');
         const updateData = {
           'STATUS ACESSO':    r['STATUS ACESSO'],
           'STATUS 1\u00aa FATURA': r['STATUS 1\u00aa FATURA'],
@@ -1788,6 +1842,7 @@ async function processarArquivo(file) {
           'ETAPA':            r['ETAPA'],
           'ESTORNO':          r['ESTORNO'],
           'TIPO_ESTORNO':     r['TIPO_ESTORNO'],
+          'ACIONAVEL':        _acionavel,
           'DATA PROCESSAMENTO': r['DATA PROCESSAMENTO']
         };
         const {error} = await sb.from('controle_envio').update(updateData)
@@ -1795,10 +1850,27 @@ async function processarArquivo(file) {
         if (error) { erros++; console.error('Update error:', error.message); }
         else inseridos++;
       }
+
+      // 2. Inserir pagamentos detectados
+      let pagsSalvos = 0;
+      if (pagamentosDetectados.length > 0) {
+        setUploadProgress(true, 'Registrando ' + pagamentosDetectados.length + ' pagamentos...', 96);
+        for (let j = 0; j < pagamentosDetectados.length; j += 500) {
+          const lote = pagamentosDetectados.slice(j, j+500);
+          const { error } = await sb.from('historico_pagamentos').insert(lote);
+          if (!error) pagsSalvos += lote.length;
+          else console.error('Erro ao salvar pagamentos:', error.message);
+        }
+      }
+
       setUploadProgress(false, '', 100);
-      const msg = 'Status atualizado! ' + fmt(inseridos) + ' registros' + (erros > 0 ? ' - ' + fmt(erros) + ' erros' : '');
+      console.log('Pagamentos detectados:', pagsSalvos);
+      const msg = 'Status atualizado! ' + fmt(inseridos) + ' registros' +
+        (pagsSalvos > 0 ? ' - ' + fmt(pagsSalvos) + ' pagamentos detectados' : '') +
+        (erros > 0 ? ' - ' + fmt(erros) + ' erros' : '');
       result.innerHTML = '<div class="alert alert-ok">' + msg + '</div>';
       await carregarControle();
+      if (typeof carregarHistorico === 'function') await carregarHistorico();
       atualizarDashboard();
       return;
     }
