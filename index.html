@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v39</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v40</span>
     </div>
   </div>
 </nav>
@@ -2388,8 +2388,9 @@ async function recalcularEstorno() {
 
     result.innerHTML = '<div style="color:var(--text-light)">Recalculando ' + fmt(todos.length) + ' registros...</div>';
 
-    // Recalcular estorno + etapa para cada registro
+    // 1. Classificar tudo em memoria (rapido)
     let atualizados = 0, erros = 0, estornoCount = 0;
+    const updates = [];
     for (let i = 0; i < todos.length; i++) {
       const r = todos[i];
       const _est = classificarEstorno(r, safraDate);
@@ -2397,15 +2398,17 @@ async function recalcularEstorno() {
       const dias = parseInt(r['DIAS ATRASO']) || 0;
       const etapa = calcEtapa(dias, r['PORTABILIDADE'], r['STATUS ACESSO'], temAberta, _est.estorno);
       if (_est.estorno) estornoCount++;
+      updates.push({ id: r.id, 'ESTORNO': _est.estorno, 'TIPO_ESTORNO': _est.tipo, 'ETAPA': etapa });
+    }
 
-      const { error } = await sb.from('controle_envio')
-        .update({ 'ESTORNO': _est.estorno, 'TIPO_ESTORNO': _est.tipo, 'ETAPA': etapa })
-        .eq('id', r.id);
-      if (error) { erros++; } else { atualizados++; }
-
-      if (i % 100 === 0) {
-        result.innerHTML = '<div style="color:var(--text-light)">Atualizando... ' + i + '/' + todos.length + '</div>';
-      }
+    // 2. Salvar em lotes de 500 via upsert (1 requisicao por lote em vez de 1 por registro)
+    const LOTE = 500;
+    for (let i = 0; i < updates.length; i += LOTE) {
+      const lote = updates.slice(i, i + LOTE);
+      result.innerHTML = '<div style="color:var(--text-light)">Salvando ' + Math.min(i+LOTE, updates.length) + '/' + updates.length + '...</div>';
+      const { error } = await sb.from('controle_envio').upsert(lote, { onConflict: 'id' });
+      if (error) { erros += lote.length; console.error('Upsert erro:', error.message); }
+      else { atualizados += lote.length; }
     }
 
     const pct = (estornoCount / todos.length * 100).toFixed(1);
