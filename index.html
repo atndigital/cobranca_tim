@@ -237,6 +237,10 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <!-- DASHBOARD -->
     <div id="tab-dashboard" class="tab-panel active">
       <div class="sec-title">Visao geral</div>
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.9rem">
+        <label class="fl" style="margin-bottom:0">Safra</label>
+        <select id="sel-safra-dashboard" onchange="atualizarDashboard()" style="width:auto;padding:.38rem .65rem;font-size:.76rem"><option value="">Todas as safras</option></select>
+      </div>
       <div class="cards-row">
         <div class="card blue"><div class="card-accent"></div><div class="card-label">Total na Base</div><div class="card-value" id="d-total">--</div><div class="card-sub">Registros da safra</div></div>
         <div class="card green"><div class="card-accent"></div><div class="card-label">Status Ativo</div><div class="card-value" id="d-ativo">--</div><div class="card-sub">Acessos ativos</div></div>
@@ -1062,11 +1066,18 @@ async function carregarControle() {
     offset += 1000;
   }
   dadosControle = todos;
-  const safras = [...new Set(todos.map(r => r['SAFRA']).filter(Boolean))].sort();
+  const safras = [...new Set(todos.map(r => r['SAFRA']).filter(Boolean))]
+    .sort((a,b) => (parseSafra(a)||0) - (parseSafra(b)||0));
   ['filt-safra','filt-equipe-safra','sel-safra-download','sel-safra-estorno','sel-safra-siebel'].forEach(id => {
     const sel = document.getElementById(id);
     if (sel) sel.innerHTML = '<option value="">Selecione a safra</option>' + safras.map(s => '<option>' + s + '</option>').join('');
   });
+  // Dashboard: pre-seleciona a safra cronologicamente mais recente, nao "todas"
+  const selDash = document.getElementById('sel-safra-dashboard');
+  if (selDash) {
+    selDash.innerHTML = '<option value="">Todas as safras</option>' + safras.map(s => '<option>' + s + '</option>').join('');
+    if (safras.length>0 && !selDash.value) selDash.value = safras[safras.length-1];
+  }
   renderControle();
 }
 
@@ -1732,7 +1743,8 @@ async function prepararDownload(){
 
 // DASHBOARD
 function atualizarDashboard(){
-  const data=dadosControle;
+  const safraSel = (document.getElementById('sel-safra-dashboard')||{}).value || '';
+  const data = safraSel ? dadosControle.filter(r=>r['SAFRA']===safraSel) : dadosControle;
   const ativo=data.filter(r=>r['STATUS ACESSO']==='Ativo').length;
   const canc=data.filter(r=>r['STATUS ACESSO']!=='Ativo').length;
   const aberta=data.filter(r=>(r['STATUS PAGAMENTO']||'').toLowerCase()==='aberta').length;
@@ -1743,26 +1755,29 @@ function atualizarDashboard(){
   setEl('d-aberta',fmt(aberta));setEl('d-paga',fmt(paga));setEl('d-valor',fmtBRL(val));
   setEl('d-port-ok',fmt(portOk));setEl('d-port-nok',fmt(data.length-portOk));
   setEl('d-port-pct',data.length>0?(portOk/data.length*100).toFixed(1)+'%':'--');
-  setEl('d-pag',fmt(dadosHistorico.length));
-  // Estorno geral
-  const safras=[...new Set(data.map(r=>r['SAFRA']).filter(Boolean))];
-  let totalEstorno=0;
-  safras.forEach(s=>{const res=calcularEstornoPorSafra(s);totalEstorno+=res.estornoTratado;});
-  setEl('d-estorno',data.length>0?(totalEstorno/data.length*100).toFixed(1)+'%':'--');
+  setEl('d-pag',fmt(safraSel ? dadosHistorico.filter(r=>r['SAFRA']===safraSel).length : dadosHistorico.length));
+  // Estorno - soma estornoTratado e GROSS real (tabela conectadas) das safras visiveis
+  // (uma so, se filtrado; todas, se "Todas as safras"), NAO o total de linhas em controle_envio
+  const safras = safraSel ? [safraSel] : [...new Set(data.map(r=>r['SAFRA']).filter(Boolean))];
+  let totalEstorno=0, totalGross=0;
+  safras.forEach(s=>{const res=calcularEstornoPorSafra(s);totalEstorno+=res.estornoTratado;totalGross+=res.gross;});
+  setEl('d-estorno',totalGross>0?(totalEstorno/totalGross*100).toFixed(1)+'%':'--');
   renderRespostas();
-  renderGraficoVenc();
-  renderGraficoPort();
+  renderGraficoVenc(data);
+  renderGraficoPort(data);
 }
-function renderGraficoVenc(){
+function renderGraficoVenc(dados){
   if(typeof Plotly==='undefined')return;
+  const fonte = dados||dadosControle;
   const hoje=new Date();hoje.setHours(0,0,0,0);
-  const cnt={};dadosControle.forEach(r=>{const d=(r['VENCIMENTO']||'').slice(0,10);if(!d)return;cnt[d]=(cnt[d]||0)+1;});
+  const cnt={};fonte.forEach(r=>{const d=(r['VENCIMENTO']||'').slice(0,10);if(!d)return;cnt[d]=(cnt[d]||0)+1;});
   const dias=Object.keys(cnt).sort();if(!dias.length)return;
   Plotly.newPlot('chart-venc',[{x:dias,y:dias.map(d=>cnt[d]),type:'bar',marker:{color:dias.map(d=>{const dd=new Date(d);dd.setHours(0,0,0,0);return dd<hoje?'#DC2626':dd.getTime()===hoje.getTime()?'#D97706':'#2563EB';})}}],{paper_bgcolor:'#fff',plot_bgcolor:'#fff',font:{family:'Inter',color:'#6B7280'},margin:{l:30,r:10,t:10,b:30},height:210,xaxis:{gridcolor:'#F3F4F6'},yaxis:{gridcolor:'#F3F4F6'},showlegend:false},{displayModeBar:false});
 }
-function renderGraficoPort(){
+function renderGraficoPort(dados){
   if(typeof Plotly==='undefined')return;
-  const cnt={};dadosControle.forEach(r=>{const p=r['PORTABILIDADE']||'N/D';cnt[p]=(cnt[p]||0)+1;});
+  const fonte = dados||dadosControle;
+  const cnt={};fonte.forEach(r=>{const p=r['PORTABILIDADE']||'N/D';cnt[p]=(cnt[p]||0)+1;});
   if(!Object.keys(cnt).length)return;
   Plotly.newPlot('chart-port',[{labels:Object.keys(cnt),values:Object.values(cnt),type:'pie',hole:0.6,marker:{colors:['#16A34A','#DC2626','#D97706','#9CA3AF']},textinfo:'percent'}],{paper_bgcolor:'#fff',font:{family:'Inter',color:'#6B7280'},margin:{l:0,r:0,t:0,b:0},height:210,legend:{font:{size:10}}},{displayModeBar:false});
 }
