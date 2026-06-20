@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v41</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v4</span>
     </div>
   </div>
 </nav>
@@ -261,29 +261,10 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
         <div class="resp-card pix"><div class="resp-icon">&#x26A1;</div><div class="resp-label">Solicitaram PIX</div><div class="resp-value" id="d-pix">--</div><div class="resp-pct" id="d-pix-pct"></div></div>
         <div class="resp-card bloquear"><div class="resp-icon">&#x1F6AB;</div><div class="resp-label">Pediram Bloqueio</div><div class="resp-value" id="d-bloquear">--</div><div class="resp-pct" id="d-bloquear-pct"></div></div>
       </div>
-      <div class="divider"></div>
-      <div class="sec-title">Detalhamento de Faturas</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-        <div style="background:var(--page);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-          <div style="padding:.5rem .9rem;background:#F9FAFB;border-bottom:1px solid var(--border);display:flex;gap:.5rem;align-items:center">
-            <select id="sel-dash-safra" onchange="atualizarDetDash()" style="padding:.3rem .6rem;font-size:.75rem;width:auto">
-              <option value="">Todas as safras</option>
-            </select>
-            <span style="font-size:.65rem;color:var(--text-light)">Selecione a safra para ver o detalhamento</span>
-          </div>
-          <div id="det-dash-faturas"></div>
-        </div>
-        <div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
-            <div class="card blue"><div class="card-accent"></div><div class="card-label">GROSS</div><div class="card-value" id="d-gross">--</div><div class="card-sub">Total conectadas no mes</div></div>
-            <div class="card red"><div class="card-accent"></div><div class="card-label">% Estorno Tratado</div><div class="card-value" id="d-estorno2" style="font-size:1.6rem">--</div><div class="card-sub">Meta: 38%</div></div>
-            <div class="card yellow"><div class="card-accent"></div><div class="card-label">Meta (38%)</div><div class="card-value" id="d-meta">--</div><div class="card-sub">Max clientes em estorno</div></div>
-            <div class="card purple"><div class="card-accent"></div><div class="card-label">Reducao Necessaria</div><div class="card-value" id="d-reducao">--</div><div class="card-sub">Clientes precisam pagar</div></div>
-          </div>
-          <div class="chart-box"><h4>Portabilidade</h4><div id="chart-port" style="height:170px"></div></div>
-        </div>
+      <div style="display:grid;grid-template-columns:2fr 1fr;gap:.9rem">
+        <div class="chart-box"><h4>Clientes por data de vencimento</h4><div id="chart-venc" style="height:210px"></div></div>
+        <div class="chart-box"><h4>Portabilidade</h4><div id="chart-port" style="height:210px"></div></div>
       </div>
-      <div class="chart-box"><h4>Clientes por data de vencimento</h4><div id="chart-venc" style="height:180px"></div></div>
     </div>
 
     <!-- RESPOSTAS -->
@@ -386,12 +367,6 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
           <div style="font-size:.7rem;color:var(--text-light);margin-top:.5rem;text-align:center">Apos consulta no RPA, suba o arquivo novamente no modo Atualizar status</div>
         </div>
       </div>
-      <div style="margin-top:1.2rem;padding:1rem;background:#f0f6ff;border-radius:8px;border:1px solid #cfe0ff">
-        <div style="font-weight:600;color:#063b88;margin-bottom:.3rem">Recalcular Estorno e Etapas</div>
-        <div style="font-size:.75rem;color:var(--text-light);margin-bottom:.6rem">Reaplica a regra de estorno e recalcula as etapas no banco para a safra selecionada. Use apos subir uma safra nova se os numeros estiverem errados.</div>
-        <button class="btn btn-primary" onclick="recalcularEstorno()" id="btn-recalc">Recalcular safra selecionada</button>
-        <div id="recalc-result" style="margin-top:.6rem"></div>
-      </div>
       <div class="sec-title" style="margin-top:1.2rem">Historico de Uploads</div>
       <div class="tbl-wrap">
         <table><thead><tr><th>Data</th><th>Safra</th><th>Modo</th><th>Registros</th><th>Novos</th><th>Atualizados</th><th>Erros</th><th>Status</th></tr></thead>
@@ -473,7 +448,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
       </div>
       <div class="divider"></div>
       <div class="tbl-wrap">
-        <table><thead><tr><th>Safra</th><th>Nome</th><th>CPF</th><th>Nr Portado</th><th>Nr Linha</th><th>Fatura</th><th>Valor</th><th>Vencimento</th><th>Dias</th><th>Portabilidade</th><th>Equipe</th><th>Etapa</th></tr></thead>
+        <table><thead><tr><th>Safra</th><th>Nome</th><th>CPF</th><th>Nr Portado</th><th>Nr Linha</th><th>1\u00aa Fatura</th><th>2\u00aa Fatura</th><th>Dias</th><th>Portabilidade</th><th>Equipe</th><th>Etapa</th><th>Estorno</th></tr></thead>
         <tbody id="tbody-controle"><tr><td colspan="12"><div class="empty-state"><p>Nenhum dado carregado</p></div></td></tr></tbody></table>
       </div>
       <div class="pagination"><span id="ctrl-count-text">--</span><div class="btn-row"><button class="btn btn-ghost btn-sm" id="btn-ctrl-prev" onclick="paginarControle(-1)">Anterior</button><button class="btn btn-ghost btn-sm" id="btn-ctrl-next" onclick="paginarControle(1)">Proxima</button></div></div>
@@ -554,28 +529,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
 
     <!-- HISTORICO ENVIOS -->
     <div id="tab-hist-envios" class="tab-panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;flex-wrap:wrap;gap:.5rem">
-        <div class="sec-title" style="margin:0">Historico de Envios por Cliente</div>
-        <div class="btn-row">
-          <div><label class="fl">De</label><input type="date" id="filt-he-de" onchange="filtrarHistEnvios()"></div>
-          <div><label class="fl">Ate</label><input type="date" id="filt-he-ate" onchange="filtrarHistEnvios()"></div>
-          <div><label class="fl">Safra</label>
-            <select id="filt-he-safra" onchange="filtrarHistEnvios()" style="width:auto">
-              <option value="">Todas</option>
-            </select>
-          </div>
-          <div><label class="fl">Etapa</label>
-            <select id="filt-he-etapa" onchange="filtrarHistEnvios()" style="width:auto">
-              <option value="">Todas</option>
-              <option>Preventivo</option><option>Etapa 1</option><option>Etapa 2</option>
-              <option>Etapa 3</option><option>Etapa 4</option><option>Etapa 5</option>
-              <option>Etapa 6</option><option>Etapa 7</option><option>Etapa 8</option>
-            </select>
-          </div>
-          <button class="btn btn-ghost btn-sm" onclick="filtrarHistEnvios()">Filtrar</button>
-          <button class="btn btn-ghost btn-sm" onclick="limparFiltrosHE()">Limpar</button>
-        </div>
-      </div>
+      <div class="sec-title">Historico de Envios por Cliente</div>
       <div class="cards-row">
         <div class="card blue"><div class="card-accent"></div><div class="card-label">Clientes no historico</div><div class="card-value" id="he-total">--</div></div>
         <div class="card green"><div class="card-accent"></div><div class="card-label">Receberam mensagem</div><div class="card-value" id="he-rec">--</div></div>
@@ -710,24 +664,16 @@ function switchTab(id, navId) {
 // CARREGAR TUDO
 async function recarregarTudo() {
   if (!sb) return;
-  const t0 = Date.now();
-  mostrarLoading('Carregando controle...');
-  // 1. Carregar controle PRIMEIRO e mostrar dashboard imediatamente
-  await carregarControle();
-  console.log('controle carregado em', ((Date.now()-t0)/1000).toFixed(1)+'s', '-', dadosControle.length, 'registros');
-  mostrarLoading('Carregando snapshots...');
-  await carregarSnapshots();
-  atualizarDashboard();
-  ocultarLoading();
-  console.log('dashboard pronto em', ((Date.now()-t0)/1000).toFixed(1)+'s');
-  // 2. Carregar o resto em segundo plano (nao bloqueia a tela)
-  Promise.all([
+  mostrarLoading('Carregando dados...');
+  await Promise.all([
+    carregarControle(),
     carregarHistorico(),
     carregarHistEnvios(),
-    carregarRespostasData()
-  ]).then(() => {
-    atualizarDashboard();
-  }).catch(e => console.warn('Carregamento secundario:', e.message));
+    carregarRespostasData(),
+    carregarSnapshots()
+  ]);
+  atualizarDashboard();
+  ocultarLoading();
 }
 
 // SNAPSHOTS
@@ -753,71 +699,64 @@ async function salvarSnapshot(safra, pctEstorno, totalEstorno, gross) {
 
 // REGRAS DE ESTORNO
 
-// Classifica o tipo de fatura do cliente usando as duas colunas de status
-function classificarTipoFatura(r) {
-  // Reads STATUS 1a/2a FATURA from DB row
-  const s1 = (r['STATUS 1\u00aa FATURA'] || r['STATUS 1 FATURA'] || '').trim();
-  const s2 = (r['STATUS 2\u00aa FATURA'] || r['STATUS 2 FATURA'] || '').trim();
-  return calcTipoEstorno(s1, s2);
-}
-
+// REGRA OFICIAL DE ESTORNO (validada contra referencia Python: 47.9% / 3758 de ~7842 gross)
+//
+// Classificacao e por MES de vencimento da 1a fatura (nao pelo dia):
+//   - 1a fatura vence em MARCO ou ABRIL -> precisa que AMBAS (1a e 2a) estejam pagas
+//                                          para nao haver estorno ("2 FATURAS")
+//   - 1a fatura vence em MAIO            -> so a 1a fatura importa ("1 FATURA");
+//                                          a 2a fatura e IGNORADA por completo
+//   - 1a fatura vence em JUNHO em diante -> nunca ha estorno
+//   - Cliente CANCELADO/BLOQUEADO/SUSPENSO (STATUS ACESSO != 'Ativo') -> SEMPRE estorno
+//   - Protecao contra corrupcao de data: ano < 2026 -> forca SEM ESTORNO
+//
+// Campos usados (colunas dedicadas por fatura - ver migracao Opcao A):
+//   STATUS ACESSO, VENCIMENTO 1A FATURA, STATUS 1A FATURA, VENCIMENTO 2A FATURA, STATUS 2A FATURA
 function classificarEstorno(cliente, safraDate) {
-  const statusAcesso = (cliente['STATUS ACESSO'] || '').trim();
-  const s1 = (cliente['STATUS 1\u00aa FATURA'] || '').trim();
-  const s2 = (cliente['STATUS 2\u00aa FATURA'] || '').trim();
-  const venc1Str = cliente['VENCIMENTO 1A FATURA'] || cliente['VENCIMENTO'] || '';
-
-  // Cancelado = SEMPRE estorno
-  if (statusAcesso !== 'Ativo') return {estorno: true, tipo: 'CANCELADO'};
-  if (!safraDate) return {estorno: false, tipo: 'SEM DATA SAFRA'};
-  if (!venc1Str)  return {estorno: false, tipo: 'SEM ESTORNO'};
-
-  // Protecao contra data corrompida (ano < 2026) = SEM ESTORNO
-  const _vAno = new Date(venc1Str).getFullYear();
-  if (isNaN(_vAno) || _vAno < 2026) return {estorno: false, tipo: 'SEM ESTORNO'};
-
-  const fechamento = getFechamento(safraDate); // safra + 3 meses
-  // fechamento - 2 meses = limite para 2 faturas (ex: Abr para safra Marco)
-  const lim2mes = fechamento.getMonth() - 2; // pode ser negativo
-  const lim2ano = lim2mes < 0 ? fechamento.getFullYear() - 1 : fechamento.getFullYear();
-  const lim2    = (lim2mes + 12) % 12 + 1; // mes 1-12
-  // fechamento - 1 mes = limite para 1 fatura (ex: Mai para safra Marco)
-  const lim1mes = fechamento.getMonth() - 1;
-  const lim1ano = lim1mes < 0 ? fechamento.getFullYear() - 1 : fechamento.getFullYear();
-  const lim1    = (lim1mes + 12) % 12 + 1; // mes 1-12
-
-  const venc1    = new Date(venc1Str);
-  const vMes     = venc1.getMonth() + 1; // 1-12
-  const vAno     = venc1.getFullYear();
-
-  const ab = v => v === 'Aberta';
-  const pg = v => v !== '' && v !== 'nan' && v !== 'null' && v !== 'Aberta';
-
-  // Venc 1a <= fechamento-2 = 2 FATURAS (ex: Mar/Abr para safra Marco)
-  if (vAno < lim2ano || (vAno === lim2ano && vMes <= lim2)) {
-    if (ab(s1) && ab(s2)) return {estorno: true,  tipo: '2 FATURAS (2 ABERTA)'};
-    if (pg(s1) && ab(s2)) return {estorno: true,  tipo: '2 FATURAS (1 PAGA 2 ABERTA)'};
-    if (ab(s1) && pg(s2)) return {estorno: true,  tipo: '2 FATURAS (1 ABERTO 2 PAGA)'};
-    if (pg(s1) && pg(s2)) return {estorno: false, tipo: '2 FATURAS - 2 PGS'};
-    // Sem 2a fatura
-    if (ab(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
-    if (pg(s1)) return {estorno: false, tipo: '1 FATURA PAGA'};
+  // Cancelado / bloqueado / suspenso -> sempre estorno, independente de tudo mais
+  if ((cliente['STATUS ACESSO'] || '') !== 'Ativo') {
+    return {estorno: true, tipo: 'CANCELADO'};
   }
 
-  // Venc 1a = fechamento-1 = 1 FATURA (ex: Mai para safra Marco - ignora 2a)
-  if (vAno === lim1ano && vMes === lim1) {
-    if (ab(s1)) return {estorno: true,  tipo: '1 FATURA ABERTA'};
-    if (pg(s1)) return {estorno: false, tipo: '1 FATURA PAGA'};
+  const venc1Str = cliente['VENCIMENTO 1A FATURA'] || '';
+  const venc1 = venc1Str ? new Date(venc1Str) : null;
+
+  // Sem data de vencimento da 1a fatura nao da para classificar
+  if (!venc1 || isNaN(venc1.getTime())) return {estorno: false, tipo: 'AGUARDANDO FATURA'};
+
+  // Protecao contra corrupcao de data (ano implausivel)
+  if (venc1.getFullYear() < 2026) return {estorno: false, tipo: 'SEM ESTORNO'};
+
+  const status1 = (cliente['STATUS 1A FATURA'] || '').toLowerCase();
+  const status2 = (cliente['STATUS 2A FATURA'] || '').toLowerCase();
+  const fat1Aberta = status1 === 'aberta';
+  const fat2Aberta = status2 === 'aberta';
+
+  const mes1 = venc1.getMonth(); // 0=Jan ... 11=Dez
+
+  // Junho (5) em diante -> nunca estorno
+  if (mes1 >= 5) return {estorno: false, tipo: 'SEM ESTORNO'};
+
+  // Maio (4) -> so a 1a fatura importa; 2a fatura e ignorada
+  if (mes1 === 4) {
+    if (fat1Aberta) return {estorno: true, tipo: '1 FATURA'};
+    return {estorno: false, tipo: 'SEM ESTORNO'};
   }
 
-  // Venc 1a >= fechamento = SEM ESTORNO
+  // Marco (2) ou Abril (3) -> precisa das duas pagas para nao ter estorno
+  if (mes1 === 2 || mes1 === 3) {
+    if (fat1Aberta || fat2Aberta) return {estorno: true, tipo: '2 FATURAS'};
+    return {estorno: false, tipo: 'SEM ESTORNO'};
+  }
+
+  // Antes de marco (Jan/Fev) - fora do padrao esperado de safra, sem regra definida
   return {estorno: false, tipo: 'SEM ESTORNO'};
 }
 
 function parseSafra(safraStr) {
   if (!safraStr) return null;
   const upper = (safraStr + '').toUpperCase()
-    .replace('MAR\u00c7O','MARCO').replace('\u00c7','C').replace('MAR\u00c3\u0087O','MARCO');
+    .replace('MAR\u00c7O','MARCO').replace('\u00c7','C');
   const nomes = ['JANEIRO','FEVEREIRO','MARCO','ABRIL','MAIO','JUNHO',
                  'JULHO','AGOSTO','SETEMBRO','OUTUBRO','NOVEMBRO','DEZEMBRO'];
   for (let i = 0; i < nomes.length; i++) {
@@ -830,46 +769,36 @@ function parseSafra(safraStr) {
   return null;
 }
 
-function getFechamento(safraDate) {
-  if (!safraDate) return null;
-  return new Date(safraDate.getFullYear(), safraDate.getMonth() + 3, 1);
-}
-
-
 function calcularEstornoPorSafra(safra) {
   const dados = dadosControle.filter(r => !safra || r['SAFRA'] === safra);
   const safraDate = parseSafra(safra || (dados[0] && dados[0].SAFRA));
-  const fechamento = getFechamento(safraDate);
 
-  // GROSS = do snapshot (salvo no upload com contagem das conectadas)
+  // GROSS = total de ativacoes do mes na tabela conectadas (via ultimo snapshot salvo)
   const ultimoSnap = dadosSnapshots.filter(s=>s['SAFRA']===safra).sort((a,b)=>a['DATA']>b['DATA']?-1:1)[0];
-  const gross = (ultimoSnap&&ultimoSnap['GROSS']) ? ultimoSnap['GROSS'] : dados.length;
+  const gross = ultimoSnap&&ultimoSnap['GROSS'] ? ultimoSnap['GROSS'] : dados.length;
   const ativos = dados.filter(r => r['STATUS ACESSO'] === 'Ativo');
   const cancelados = dados.filter(r => r['STATUS ACESSO'] !== 'Ativo');
 
   const det = {
     'SEM ESTORNO': 0,
-    '1 FATURA PAGA': 0,
-    '1 FATURA ABERTA': 0,
-    '2 FATURAS - 2 PGS': 0,
-    '2 FATURAS (2 ABERTA)': 0,
-    '2 FATURAS (1 PAGA 2 ABERTA)': 0,
-    '2 FATURAS (1 ABERTO 2 PAGA)': 0,
+    '1 FATURA': 0,
+    '2 FATURAS': 0,
     'CANCELADO': 0,
-    'SEM DATA SAFRA': 0
+    'AGUARDANDO FATURA': 0
   };
 
-  let estornoClientes = [], semEstorno = [];
+  let estornoClientes = [], semEstorno = [], aguardandoFatura = [];
 
-  // Usar campo ESTORNO e TIPO_ESTORNO salvos no banco (calculados no upload)
-  dados.forEach(r => {
-    const tipo = r['TIPO_ESTORNO'] || 'SEM ESTORNO';
-    const ehEstorno = r['ESTORNO'] === true;
-    if (ehEstorno) estornoClientes.push(r);
+  ativos.forEach(r => {
+    const res = classificarEstorno(r, safraDate);
+    if (res.estorno) estornoClientes.push(r);
     else semEstorno.push(r);
-    if (det[tipo] !== undefined) det[tipo]++;
+    if (res.tipo === 'AGUARDANDO FATURA') aguardandoFatura.push(r);
+    if (det[res.tipo] !== undefined) det[res.tipo]++;
     else det['SEM ESTORNO']++;
   });
+
+  det['CANCELADO'] = cancelados.length;
 
   const metaEstorno = Math.floor(gross * 0.38);
   const reducao = Math.max(0, estornoClientes.length - metaEstorno);
@@ -877,6 +806,12 @@ function calcularEstornoPorSafra(safra) {
   const pctAtivos = gross > 0 ? (ativos.length / gross * 100).toFixed(1) : '0';
   const pctCanc = gross > 0 ? (cancelados.length / gross * 100).toFixed(1) : '0';
   const cobrar = ativos.filter(r => r['ETAPA'] && (r['STATUS PAGAMENTO']||'').toLowerCase() === 'aberta');
+
+  // Delta: clientes da safra (GROSS, tabela conectadas) que AINDA NAO apareceram
+  // no controle_envio (ou seja, sem nenhum dado de fatura processado ate o momento)
+  const faturasEncontradas = dados.length;
+  const deltaGross = Math.max(0, gross - faturasEncontradas);
+  const pctDeltaGross = gross > 0 ? (deltaGross / gross * 100).toFixed(1) : '0';
 
   // Evolucao: diferenca entre snapshot atual e anterior
   const snaps = dadosSnapshots.filter(s => s['SAFRA'] === safra).sort((a,b) => a.data_snapshot > b.data_snapshot ? 1 : -1);
@@ -893,7 +828,9 @@ function calcularEstornoPorSafra(safra) {
     estornoTratado: estornoClientes.length, estornoClientes,
     semEstorno: semEstorno.length, metaEstorno, reducao,
     pctEstorno, pctMetaEstorno: '38',
-    cobrar: cobrar.length, det, fechamento, safraDate,
+    cobrar: cobrar.length, det, safraDate,
+    aguardandoFatura: aguardandoFatura.length,
+    faturasEncontradas, deltaGross, pctDeltaGross,
     evolucao, snaps
   };
 }
@@ -913,7 +850,6 @@ function renderEstorno() {
 
   const pctNum = parseFloat(res.pctEstorno);
   const pctCor = pctNum > 38 ? '#DC2626' : '#16A34A';
-  const fechStr = res.fechamento ? res.fechamento.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}) : '--';
   const pagsSafra = dadosHistorico.filter(r => r['SAFRA'] === safra);
   const pctBaixas = res.estornoTratado > 0 ? (pagsSafra.length / res.estornoTratado * 100).toFixed(1) : '0';
   const pctReducao = res.estornoTratado > 0 ? (res.reducao / res.estornoTratado * 100).toFixed(1) : '0';
@@ -927,7 +863,6 @@ function renderEstorno() {
   el.innerHTML =
     '<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:1rem">' +
       '<span style="font-size:.9rem;font-weight:700">Safra: ' + safra + '</span>' +
-      '<span style="font-size:.75rem;color:var(--text-light);background:var(--gray-bg);padding:2px 10px;border-radius:20px">Fechamento: ' + fechStr + '</span>' +
     '</div>' +
 
     // Cards principais - igual ao Streamlit
@@ -938,6 +873,13 @@ function renderEstorno() {
         '<div class="card-sub" style="line-height:1.7">' +
           '<span style="color:#16A34A">Ativos: ' + fmt(res.ativos) + ' (' + res.pctAtivos + '%)</span><br>' +
           '<span style="color:#DC2626">Canc: ' + fmt(res.cancelados) + ' (' + res.pctCanc + '%)</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card gray"><div class="card-accent"></div>' +
+        '<div class="card-label">Faltam Processar</div>' +
+        '<div class="card-value" style="color:' + (res.deltaGross>0?'#D97706':'#16A34A') + '">' + fmt(res.deltaGross) + '</div>' +
+        '<div class="card-sub">' + res.pctDeltaGross + '% do Gross ainda sem dado de fatura<br>' +
+          '<span style="font-size:.68rem">Encontrados: ' + fmt(res.faturasEncontradas) + ' de ' + fmt(res.gross) + '</span>' +
         '</div>' +
       '</div>' +
       '<div class="card red"><div class="card-accent"></div>' +
@@ -962,6 +904,11 @@ function renderEstorno() {
         '<div class="card-label">Reducao Necessaria</div>' +
         '<div class="card-value" style="color:#7C3AED">' + fmt(res.reducao) + '</div>' +
         '<div class="card-sub">' + pctReducao + '% do estorno atual</div>' +
+      '</div>' +
+      '<div class="card gray"><div class="card-accent"></div>' +
+        '<div class="card-label">Aguardando Fatura</div>' +
+        '<div class="card-value" style="color:#4B5563">' + fmt(res.aguardandoFatura) + '</div>' +
+        '<div class="card-sub">Sem 1\u00aa fatura emitida ainda \u2022 nao conta estorno</div>' +
       '</div>' +
       '<div class="card blue"><div class="card-accent"></div>' +
         '<div class="card-label">Evolucao</div>' +
@@ -1028,18 +975,15 @@ function renderDetFaturas(res) {
   const total = res.ativos || 1;
   const linhas = [
     {label:'SEM ESTORNO', val: res.det['SEM ESTORNO']||0, estorno:false},
-    {label:'1 FATURA PAGA', val: res.det['1 FATURA PAGA']||0, estorno:false},
-    {label:'1 FATURA ABERTA', val: res.det['1 FATURA ABERTA']||0, estorno:true},
-    {label:'2 FATURAS - 2 PGS', val: res.det['2 FATURAS - 2 PGS']||0, estorno:false},
-    {label:'2 FATURAS (2 ABERTA)', val: res.det['2 FATURAS (2 ABERTA)']||0, estorno:true},
-    {label:'2 FATURAS (1 PAGA 2 ABERTA)', val: res.det['2 FATURAS (1 PAGA 2 ABERTA)']||0, estorno:true},
-    {label:'2 FATURAS (1 ABERTO 2 PAGA)', val: res.det['2 FATURAS (1 ABERTO 2 PAGA)']||0, estorno:true},
+    {label:'AGUARDANDO FATURA', val: res.det['AGUARDANDO FATURA']||0, estorno:false, neutro:true},
+    {label:'1 FATURA (Maio - aberta)', val: res.det['1 FATURA']||0, estorno:true},
+    {label:'2 FATURAS (Mar/Abr - 1\u00aa ou 2\u00aa aberta)', val: res.det['2 FATURAS']||0, estorno:true},
   ];
   const detEl = document.getElementById('det-faturas');
   if (detEl) {
     detEl.innerHTML = linhas.map(l => {
       const pct = total > 0 ? (l.val/total*100).toFixed(1) : '0';
-      const cor = l.estorno ? '#DC2626' : '#16A34A';
+      const cor = l.neutro ? '#6B7280' : (l.estorno ? '#DC2626' : '#16A34A');
       return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem .9rem;border-bottom:1px solid var(--border)">' +
         '<div style="display:flex;align-items:center;gap:.6rem">' +
           '<div style="width:8px;height:8px;border-radius:50%;background:' + cor + '"></div>' +
@@ -1050,7 +994,17 @@ function renderDetFaturas(res) {
           '<span style="font-weight:700;color:' + cor + ';font-family:monospace;min-width:55px;text-align:right">' + fmt(l.val) + '</span>' +
         '</div>' +
       '</div>';
-    }).join('');
+    }).join('') +
+    '<div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem .9rem;border-bottom:1px solid var(--border)">' +
+      '<div style="display:flex;align-items:center;gap:.6rem">' +
+        '<div style="width:8px;height:8px;border-radius:50%;background:#DC2626"></div>' +
+        '<span style="font-size:.8rem">CANCELADO / BLOQUEADO</span>' +
+      '</div>' +
+      '<div style="display:flex;align-items:center;gap:1.2rem">' +
+        '<span style="font-size:.75rem;color:var(--text-light);min-width:40px;text-align:right">' + (res.gross>0?(res.cancelados/res.gross*100).toFixed(1):'0') + '%</span>' +
+        '<span style="font-weight:700;color:#DC2626;font-family:monospace;min-width:55px;text-align:right">' + fmt(res.cancelados) + '</span>' +
+      '</div>' +
+    '</div>';
   }
 }
 
@@ -1100,14 +1054,12 @@ function downloadSiebel(safra) {
 async function carregarControle() {
   if (!sb) return;
   let todos = [], offset = 0;
-  const BATCH = 1000; // limite real do Supabase por request
   while (true) {
-    const {data, error} = await sb.from('controle_envio').select('*').range(offset, offset+BATCH-1);
-    if (error) { console.warn('carregarControle:', error.message); break; }
-    if (!data || data.length === 0) break;
+    const {data} = await sb.from('controle_envio').select('*').range(offset, offset+999);
+    if (!data||!data.length) break;
     todos.push(...data);
-    if (data.length < BATCH) break; // ultima pagina
-    offset += BATCH;
+    if (data.length < 1000) break;
+    offset += 1000;
   }
   dadosControle = todos;
   const safras = [...new Set(todos.map(r => r['SAFRA']).filter(Boolean))].sort();
@@ -1160,19 +1112,25 @@ function renderControle() {
     const portCls = isConcluida ? 'pill-green' : 'pill-red';
     const portLabel = isConcluida ? 'Concluida' : 'Nao Concluida';
     const safraDate = parseSafra(r['SAFRA']);
-    const {estorno} = classificarEstorno(r, safraDate);
+    const {estorno, tipo} = classificarEstorno(r, safraDate);
+    const fmtFat=(status,venc,valor)=>{
+      if(!venc && !status) return '<span style="color:var(--text-light)">--</span>';
+      const st=(status||'').toLowerCase();
+      const cls = st==='aberta' ? 'pill-red' : (st==='paga'||st==='em negociacao'||st==='parcelada'||st==='ordem pagto'||st==='pagamento cartao de credito') ? 'pill-green' : 'pill-gray';
+      return '<span class="pill '+cls+'">'+(status||'--')+'</span><br><span class="mono" style="font-size:.7rem">'+fmtData(venc)+' \u2022 '+fmtBRL(valor)+'</span>';
+    };
     return '<tr>' +
       '<td>' + (r['SAFRA']||'') + '</td><td>' + (r['NOME']||'') + '</td>' +
       '<td class="mono">' + (r['CPF']||'') + '</td>' +
       '<td class="mono">' + (r['NUMERO PORTADO']||'') + '</td>' +
       '<td class="mono">' + (r['NUMERO LINHA']||'') + '</td>' +
-      '<td>' + (r['FATURA']||'') + '</td>' +
-      '<td class="mono">' + fmtBRL(r['VALOR']) + '</td>' +
-      '<td>' + fmtData(r['VENCIMENTO']) + '</td>' +
+      '<td>' + fmtFat(r['STATUS 1A FATURA'],r['VENCIMENTO 1A FATURA'],r['VALOR 1A FATURA']) + '</td>' +
+      '<td>' + fmtFat(r['STATUS 2A FATURA'],r['VENCIMENTO 2A FATURA'],r['VALOR 2A FATURA']) + '</td>' +
       '<td>' + (r['DIAS ATRASO']||'') + '</td>' +
       '<td><span class="pill ' + portCls + '">' + portLabel + '</span></td>' +
       '<td>' + (r['EQUIPE']||'') + '</td>' +
       '<td>' + (r['ETAPA'] ? '<span style="color:' + (ETAPA_CORES[r['ETAPA']]||'#111') + ';font-weight:600">' + r['ETAPA'] + '</span>' : '') + '</td>' +
+      '<td>' + (estorno ? '<span class="pill pill-red" title="'+tipo+'">ESTORNO</span>' : '<span class="pill pill-green">OK</span>') + '</td>' +
       '</tr>';
   }).join('');
   const tot=data.length, ini=ctrlPage*PG+1, fim=Math.min((ctrlPage+1)*PG,tot);
@@ -1244,8 +1202,7 @@ function renderResumo() {
   if (div) div.innerHTML = safras.map(safra => {
     const res = calcularEstornoPorSafra(safra);
     const pctCor = parseFloat(res.pctEstorno)>38?'#DC2626':'#16A34A';
-    const fechStr = res.fechamento?res.fechamento.toLocaleDateString('pt-BR',{month:'long',year:'numeric'}):'--';
-    return '<div style="margin-bottom:1.3rem"><div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem"><span style="font-size:.92rem;font-weight:700">Safra: '+safra+'</span><span style="font-size:.75rem;color:var(--text-light);background:var(--gray-bg);padding:2px 10px;border-radius:20px">Fechamento: '+fechStr+'</span></div>' +
+    return '<div style="margin-bottom:1.3rem"><div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.6rem"><span style="font-size:.92rem;font-weight:700">Safra: '+safra+'</span></div>' +
       '<div class="cards-row">' +
       '<div class="card blue"><div class="card-accent"></div><div class="card-label">Gross</div><div class="card-value">'+fmt(res.gross)+'</div><div class="card-sub">Ativos: '+fmt(res.ativos)+' Canc: '+fmt(res.cancelados)+'</div></div>' +
       '<div class="card red"><div class="card-accent"></div><div class="card-label">% Estorno Tratado</div><div class="card-value" style="color:'+pctCor+'">'+res.pctEstorno+'%</div><div class="card-sub">'+fmt(res.estornoTratado)+' clientes</div></div>' +
@@ -1463,534 +1420,263 @@ async function carregarHistEnvios(){
 function dragOver(e){e.preventDefault();document.getElementById('upload-zone').classList.add('drag');}
 function dragLeave(){document.getElementById('upload-zone').classList.remove('drag');}
 function dropFile(e){e.preventDefault();dragLeave();const f=e.dataTransfer.files[0];if(f)processarArquivo(f);}
-function parseDateBR(v) {
-  if (!v || v === 'nan' || v === '') return null;
-  const s = String(v).trim();
-  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  if (m) return m[3] + '-' + m[2] + '-' + m[1];
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  return null;
-}
+async function processarArquivo(file){
+  if(!sb){alert('Conecte ao Supabase primeiro.');return;}
+  const mes=document.getElementById('inp-safra-mes').value;
+  const ano=document.getElementById('inp-safra-ano').value;
+  if(!mes||!ano){alert('Selecione o m\u00eas e ano da safra.');return;}
+  const safra=mes+' '+ano;
+  const modo=document.getElementById('inp-safra-modo').value;
+  setUploadProgress(true,'Lendo arquivo...',5);
+  const result=document.getElementById('upload-result');result.innerHTML='';
+  try{
+    const text=await lerArquivoLatin1(file);
+    setUploadProgress(true,'Fazendo parse...',15);
+    const rows=parseCSV(text);
+    if(!rows.length)throw new Error('Arquivo vazio.');
 
-function parseValor(v) {
-  if (!v || v === 'nan') return null;
-  const n = parseFloat(String(v).replace('R$','').replace(/\./g,'').replace(',','.'));
-  return isNaN(n) ? null : n;
-}
+    // Determinar mes/ano da safra para filtros
+    const mesNums={'JANEIRO':1,'FEVEREIRO':2,'MARCO':3,'ABRIL':4,'MAIO':5,'JUNHO':6,
+                   'JULHO':7,'AGOSTO':8,'SETEMBRO':9,'OUTUBRO':10,'NOVEMBRO':11,'DEZEMBRO':12};
+    const mesNum = mesNums[mes]||0;
+    const anoNum = parseInt(ano);
 
-function calcEtapa(dias, portabilidade, statusAcesso, temFaturaAberta, ehEstorno) {
-  // So entra no fluxo de cobranca se for estorno
-  if (statusAcesso !== 'Ativo' || !temFaturaAberta || !ehEstorno) return null;
-  const conc = portabilidade === 'Portabilidade Concluida';
-  if (dias <= -2) return 'Preventivo';
-  if (dias >= 0 && dias <= 6) return null;
-  if (dias >= 7  && dias <= 10) return 'Etapa 1';
-  if (dias >= 11 && dias <= 15) return 'Etapa 2';
-  if (dias >= 16 && dias <= 23) return 'Etapa 3';
-  if (dias >= 24 && dias <= 30) return 'Etapa 4';
-  if (!conc) return null;
-  if (dias >= 31 && dias <= 42) return 'Etapa 5';
-  if (dias >= 43 && dias <= 50) return 'Etapa 6';
-  if (dias >= 51 && dias <= 62) return 'Etapa 7';
-  if (dias >= 63 && dias <= 70) return 'Etapa 8';
-  return null;
-}
-
-function calcTipoEstorno(s1, s2) {
-  const _s1 = (s1||'').trim();
-  const _s2 = (s2||'').trim();
-  const temF2  = _s2 !== '' && _s2 !== 'nan' && _s2 !== 'null';
-  const aberta = v => v === 'Aberta';
-  const paga   = v => v !== '' && v !== 'nan' && v !== 'null' && v !== 'Aberta';
-  if (!temF2) {
-    if (aberta(_s1)) return '1 FATURA ABERTA';
-    if (paga(_s1))   return '1 FATURA PAGA';
-    return 'SEM ESTORNO';
-  }
-  if (aberta(_s1) && aberta(_s2)) return '2 FATURAS (2 ABERTA)';
-  if (paga(_s1)   && aberta(_s2)) return '2 FATURAS (1 PAGA 2 ABERTA)';
-  if (aberta(_s1) && paga(_s2))   return '2 FATURAS (1 ABERTO 2 PAGA)';
-  if (paga(_s1)   && paga(_s2))   return '2 FATURAS - 2 PGS';
-  return 'SEM ESTORNO';
-}
-
-
-// ---
-// UPLOAD DE SAFRA - LGICA COMPLETA E VALIDADA
-// Nomes de colunas exatos do CSV latin1:
-// 'Cpf', 'Nmero de acesso', 'Status do nmero de acesso'
-// 'Data da ativao', 'Data final do processamento'
-// '1 fatura - Status da fatura', '1 fatura - Data de vencimento'
-// '1 fatura - Dias de atraso', '1 fatura - Nmero da fatura'
-// '1 fatura - Preo da fatura', '1 fatura - Linha digitvel'
-// '2 fatura - Status da fatura', '2 fatura - Data de vencimento'
-// '2 fatura - Dias de atraso', '2 fatura - Nmero da fatura'
-// '2 fatura - Preo da fatura', '2 fatura - Linha digitvel'
-// ---
-
-// Converter DD/MM/YYYY ou DD/MM/YYYY HH:MM:SS para YYYY-MM-DD
-function parseDateBR(v) {
-  if (!v || v === 'nan' || v === '') return null;
-  const s = String(v).trim();
-  const m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
-  if (m) return m[3] + '-' + m[2] + '-' + m[1];
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  return null;
-}
-
-// Converter valor "R$32,99" para nmero
-function parseValor(v) {
-  if (!v || v === 'nan') return null;
-  const n = parseFloat(String(v).replace('R$','').replace(/\./g,'').replace(',','.'));
-  return isNaN(n) ? null : n;
-}
-
-// Determinar etapa pelo dias de atraso e portabilidade
-function calcEtapa(dias, portabilidade, statusAcesso, temFaturaAberta, ehEstorno) {
-  // So entra no fluxo de cobranca se for estorno
-  if (statusAcesso !== 'Ativo' || !temFaturaAberta || !ehEstorno) return null;
-  const conc = portabilidade === 'Portabilidade Concluida';
-  if (dias <= -2) return 'Preventivo';
-  if (dias >= 0 && dias <= 6) return null;
-  if (dias >= 7  && dias <= 10) return 'Etapa 1';
-  if (dias >= 11 && dias <= 15) return 'Etapa 2';
-  if (dias >= 16 && dias <= 23) return 'Etapa 3';
-  if (dias >= 24 && dias <= 30) return 'Etapa 4';
-  if (!conc) return null;
-  if (dias >= 31 && dias <= 42) return 'Etapa 5';
-  if (dias >= 43 && dias <= 50) return 'Etapa 6';
-  if (dias >= 51 && dias <= 62) return 'Etapa 7';
-  if (dias >= 63 && dias <= 70) return 'Etapa 8';
-  return null;
-}
-
-// Determinar tipo de estorno
-function calcTipoEstorno(s1, s2) {
-  const _s1 = (s1||'').trim();
-  const _s2 = (s2||'').trim();
-  const temF2  = _s2 !== '' && _s2 !== 'nan' && _s2 !== 'null';
-  const aberta = v => v === 'Aberta';
-  const paga   = v => v !== '' && v !== 'nan' && v !== 'null' && v !== 'Aberta';
-  if (!temF2) {
-    if (aberta(_s1)) return '1 FATURA ABERTA';
-    if (paga(_s1))   return '1 FATURA PAGA';
-    return 'SEM ESTORNO';
-  }
-  if (aberta(_s1) && aberta(_s2)) return '2 FATURAS (2 ABERTA)';
-  if (paga(_s1)   && aberta(_s2)) return '2 FATURAS (1 PAGA 2 ABERTA)';
-  if (aberta(_s1) && paga(_s2))   return '2 FATURAS (1 ABERTO 2 PAGA)';
-  if (paga(_s1)   && paga(_s2))   return '2 FATURAS - 2 PGS';
-  return 'SEM ESTORNO';
-}
-
-async function processarArquivo(file) {
-  if (!sb) { alert('Conecte ao Supabase primeiro.'); return; }
-
-  const mes = document.getElementById('inp-safra-mes').value;
-  const ano = document.getElementById('inp-safra-ano').value;
-  if (!mes || !ano) { alert('Selecione o mes e ano da safra.'); return; }
-  const safra = mes + ' ' + ano;
-  const modo = document.getElementById('inp-safra-modo').value;
-  const mesNum = {JANEIRO:1,FEVEREIRO:2,MARCO:3,ABRIL:4,MAIO:5,JUNHO:6,
-                  JULHO:7,AGOSTO:8,SETEMBRO:9,OUTUBRO:10,NOVEMBRO:11,DEZEMBRO:12}[mes] || 0;
-  const anoNum = parseInt(ano);
-
-  const result = document.getElementById('upload-result');
-  result.innerHTML = '';
-  setUploadProgress(true, 'Lendo CSV...', 5);
-
-  try {
-    // 1. Ler CSV como latin1
-    const text = await lerArquivoLatin1(file);
-    const rows = parseCSV(text);
-    if (!rows.length) throw new Error('Arquivo vazio.');
-
-    setUploadProgress(true, fmt(rows.length) + ' linhas lidas. Filtrando...', 15);
-
-    // 2. Buscar mapa de conectadas (telefone -> {portabilidade, equipe})
-    let mapaPort = {};
-    let offset = 0;
-    while (true) {
-      const {data, error} = await sb.from('conectadas')
-        .select('TELEFONE_PORTADO,NUMERO_LINHA,PORTABILIDADE,NOME,EQUIPE')
-        .range(offset, offset + 999);
-      if (error || !data || !data.length) break;
-      data.forEach(c => {
-        const tel = String(c.TELEFONE_PORTADO||'').replace(/\D/g,'');
-        const lin = String(c.NUMERO_LINHA||'').replace(/\D/g,'');
-        const obj = {portabilidade: c.PORTABILIDADE||'', nome: c.NOME||'', equipe: c.EQUIPE||''};
-        if (tel) mapaPort[tel] = obj;
-        if (lin && !mapaPort[lin]) mapaPort[lin] = obj;
-      });
-      if (data.length < 1000) break;
-      offset += 1000;
+    // Verificar duplicidade pela coluna "Data final do processamento" (col AF)
+    const getDataProcessamento = (row) => {
+      return getCol(row,'Data final do processamento','Data final do processamento','DATA_FINAL_PROCESSAMENTO')||'';
+    };
+    const datasProc = [...new Set(rows.map(r=>getDataProcessamento(r)).filter(Boolean))];
+    if(datasProc.length>0 && modo==='nova'){
+      // Checar se ja existe no banco com essa data de processamento
+      const {data:existentes} = await sb.from('controle_envio')
+        .select('"SAFRA","DATA PROCESSAMENTO"')
+        .eq('SAFRA',safra)
+        .eq('DATA PROCESSAMENTO',datasProc[0])
+        .limit(1);
+      if(existentes&&existentes.length>0){
+        if(!confirm('Aviso: j\u00e1 existe um upload desta safra com a mesma data de processamento ('+datasProc[0]+'). Deseja continuar mesmo assim?')){
+          setUploadProgress(false,'',0);
+          result.innerHTML='<div class="alert alert-warn">Upload cancelado pelo usu\u00e1rio.</div>';
+          return;
+        }
+      }
     }
 
-    setUploadProgress(true, 'Processando registros...', 30);
-
-    // 3. Processar cada linha
-    let descartados = 0;
-    const registros = [];
-
-    rows.forEach(row => {
-      // Colunas com nomes exatos do CSV latin1
-      const cpf        = String(row['Cpf']||'').replace(/\D/g,'');
-      const numAcesso  = String(row['N\u00c3\u00bamero de acesso']||'').replace(/\D/g,'').slice(-11);
-      const statusAces = String(row['Status do n\u00c3\u00bamero de acesso']||'').trim();
-      const dataAtivRaw= row['Data da ativa\u00c3\u00a7\u00c3\u00a3o']||'';
-      const dataProc   = row['Data final do processamento']||'';
-
-      // Status das faturas
-      const s1 = String(row['1\u00c2\u00aa fatura - Status da fatura']||'').trim();
-      const s2 = String(row['2\u00c2\u00aa fatura - Status da fatura']||'').trim();
-      const s3 = String(row['3\u00c2\u00aa fatura - Status da fatura']||'').trim();
-
-      // Filtro 1: Data de ativao deve ser no ms/ano da safra
-      const dataAtiv = parseDateBR(dataAtivRaw);
-      if (mesNum > 0 && dataAtiv) {
-        const [y, m] = dataAtiv.split('-').map(Number);
-        if (y !== anoNum || m !== mesNum) { descartados++; return; }
-      }
-
-      // Filtro 2: Emisso da 1 fatura >= data de ativao
-      const emis1Raw = row['1\u00c2\u00aa fatura - Data de emiss\u00c3\u00a3o']||'';
-      const emis1 = parseDateBR(emis1Raw);
-      if (dataAtiv && emis1 && emis1 < dataAtiv) { descartados++; return; }
-
-      // Cruzamento com conectadas
-      const matched = mapaPort[numAcesso] || null;
-      const portabilidade = matched ? matched.portabilidade : 'Portabilidade nao Concluida';
-      const equipe        = matched ? matched.equipe : '';
-      const nomeCon       = matched ? matched.nome : '';
-
-      // Vencimento da 1a fatura - base EXCLUSIVA para regra de estorno
-      const venc1fatura = parseDateBR(row['1\u00c2\u00aa fatura - Data de vencimento']||'');
-
-      // Fatura mais urgente (aberta com menor vencimento) - para exibicao e disparo
-      const faturas = [];
-      [[s1,'1\u00c2\u00aa'],[s2,'2\u00c2\u00aa'],[s3,'3\u00c2\u00aa']].forEach(([st,pref]) => {
-        if (st === 'Aberta') {
-          const vencRaw = row[pref+' fatura - Data de vencimento']||'';
-          const diasRaw = row[pref+' fatura - Dias de atraso']||'0';
-          const valRaw  = row[pref+' fatura - Pre\u00c3\u00a7o da fatura']||'';
-          const numRaw  = row[pref+' fatura - N\u00c3\u00bamero da fatura']||'';
-          const linRaw  = row[pref+' fatura - Linha digit\u00c3\u00a1vel']||'';
-          faturas.push({
-            venc: parseDateBR(vencRaw),
-            dias: parseInt(diasRaw)||0,
-            val:  parseValor(valRaw),
-            num:  numRaw ? parseFloat(numRaw)||null : null,
-            lin:  linRaw !== 'nan' ? linRaw : ''
-          });
+    // Filtrar linhas pela data de ativacao e emissao da 1a fatura
+    const rowsAntes = rows.length;
+    const rowsFiltradas = rows.filter(row=>{
+      // Filtro 1: Data da ativacao deve ser no mes/ano da safra
+      const dataAtiv = getCol(row,'Data da ativa\u00e7\u00e3o','Data da ativacao','DATA_ATIVACAO')||'';
+      if(dataAtiv){
+        const partsAtiv = dataAtiv.split('/');
+        if(partsAtiv.length===3){
+          const mAtiv=parseInt(partsAtiv[1]), aAtiv=parseInt(partsAtiv[2]);
+          if(mesNum>0 && (mAtiv!==mesNum||aAtiv!==anoNum)) return false;
         }
-      });
-      faturas.sort((a,b) => (a.venc||'') < (b.venc||'') ? -1 : 1);
-
-      let fatNum=null, fatVal=null, fatVenc=null, fatStatus='', fatLinha='', diasAtraso=0;
-      if (faturas.length > 0) {
-        const f = faturas[0];
-        fatNum=f.num; fatVal=f.val; fatVenc=f.venc;
-        fatStatus='Aberta'; fatLinha=f.lin; diasAtraso=f.dias;
-      } else {
-        fatStatus = s1 || 'Sem fatura';
       }
-
-      const temAberta = faturas.length > 0;
-
-      // Calcular estorno PRIMEIRO pois etapa depende disso
-      const _safraDate = parseSafra(safra);
-      const _tmpCliente = {
-        'STATUS ACESSO': statusAces,
-        'STATUS 1\u00aa FATURA': s1,
-        'STATUS 2\u00aa FATURA': s2,
-        'VENCIMENTO 1A FATURA': venc1fatura
-      };
-      const _estResult  = classificarEstorno(_tmpCliente, _safraDate);
-      const ehEstorno   = _estResult.estorno;
-      const tipoEstorno = _estResult.tipo;
-
-      // Etapa: so atribui se for estorno
-      const etapa = calcEtapa(diasAtraso, portabilidade, statusAces, temAberta, ehEstorno);
-
-
-      registros.push({
-        'SAFRA':                safra,
-        'CPF':                  cpf,
-        'NOME':                 nomeCon,
-        'NUMERO DE ACESSO':     numAcesso,
-        'NUMERO PORTADO':       numAcesso,
-        'NUMERO LINHA':         numAcesso,
-        'STATUS ACESSO':        statusAces,
-        'FATURA':               fatNum,
-        'STATUS 1\u00aa FATURA':   s1 || null,
-        'STATUS 2\u00aa FATURA':   s2 || null,
-        'STATUS PAGAMENTO':     fatStatus,
-        'VALOR':                fatVal,
-        'VENCIMENTO':           fatVenc,        // fatura mais urgente - para disparo
-        'VENCIMENTO 1A FATURA': venc1fatura,    // 1a fatura - para regra de estorno
-        'DIAS ATRASO':          diasAtraso || null,
-        'LINHA DIGITAVEL':      fatLinha || null,
-        'PORTABILIDADE':        portabilidade,
-        'EQUIPE':               equipe || null,
-        'ETAPA':                etapa,
-        'ESTORNO':              ehEstorno,
-        'TIPO_ESTORNO':         tipoEstorno,
-        'ACIONAVEL':            (statusAces === 'Ativo' && temAberta),
-        'DATA PROCESSAMENTO':   dataProc || null
-      });
+      // Filtro 2: Emissao da 1a fatura deve ser >= mes de ativacao
+      const dataEmis = getCol(row,'1\u00aa fatura - Data de emiss\u00e3o','1a fatura - Data de emissao')||'';
+      if(dataEmis&&dataAtiv){
+        const partsEmis = dataEmis.split('/');
+        const partsAtiv2 = dataAtiv.split('/');
+        if(partsEmis.length===3&&partsAtiv2.length===3){
+          const emAno=parseInt(partsEmis[2]),emMes=parseInt(partsEmis[1]);
+          const atAno=parseInt(partsAtiv2[2]),atMes=parseInt(partsAtiv2[1]);
+          const emisNum=emAno*100+emMes, ativNum=atAno*100+atMes;
+          if(emisNum<ativNum) return false;
+        }
+      }
+      return true;
     });
 
-    // DEBUG: contar estorno antes de salvar
-    const _estCount = registros.filter(r => r['ESTORNO'] === true).length;
-    const _tipoCount = {};
-    registros.forEach(r => { const t = r['TIPO_ESTORNO']||'?'; _tipoCount[t] = (_tipoCount[t]||0)+1; });
-    console.log('ANTES DE SALVAR - Estorno:', _estCount, 'de', registros.length);
-    console.log('Tipos:', JSON.stringify(_tipoCount));
-
-    setUploadProgress(true,
-      fmt(registros.length) + ' validos, ' + fmt(descartados) + ' descartados. Enviando...', 45);
-
-    // 4. Limpar safra existente se modo nova
-    if (modo === 'nova') {
-      await sb.from('controle_envio').delete().eq('SAFRA', safra);
+    const rowsDescartadas = rowsAntes - rowsFiltradas.length;
+    if(rowsDescartadas>0){
+      setUploadProgress(true,fmt(rowsFiltradas.length)+' registros v\u00e1lidos ('+fmt(rowsDescartadas)+' descartados por filtro de ativa\u00e7\u00e3o/emiss\u00e3o). Cruzando com conectadas...',25);
+    } else {
+      setUploadProgress(true,fmt(rowsFiltradas.length)+' registros. Cruzando com conectadas...',25);
     }
 
-    // 5. INSERT em batches de 500 (DELETE feito antes no modo nova)
-    let inseridos = 0, erros = 0;
-    const VALID_COLS = new Set([
-      'SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','NUMERO LINHA',
-      'STATUS ACESSO','FATURA','STATUS 1\u00aa FATURA','STATUS 2\u00aa FATURA',
-      'STATUS PAGAMENTO','VALOR','VENCIMENTO','VENCIMENTO 1A FATURA','DIAS ATRASO','LINHA DIGITAVEL',
-      'PORTABILIDADE','EQUIPE','ETAPA','ESTORNO','TIPO_ESTORNO','ACIONAVEL','DATA PROCESSAMENTO'
-    ]);
+    // Buscar GROSS da tabela conectadas (ativacoes do mes da safra)
+    let grossConectadas = 0;
+    try {
+      // DATA_ATIVACAO is stored as text YYYY-MM-DD, use text comparison
+      const mesStr=String(mesNum).padStart(2,'0');
+      const mesNextNum=mesNum===12?1:mesNum+1;
+      const anoNext=mesNum===12?anoNum+1:anoNum;
+      const mesNextStr=String(mesNextNum).padStart(2,'0');
+      const {count} = await sb.from('conectadas')
+        .select('*',{count:'exact',head:true})
+        .gte('DATA_ATIVACAO', anoNum+'-'+mesStr+'-01')
+        .lt('DATA_ATIVACAO', anoNext+'-'+mesNextStr+'-01');
+      grossConectadas = count||0;
+    } catch(e){ console.warn('Erro ao buscar gross conectadas:',e); }
 
-    const INT_COLS = new Set(['DIAS ATRASO']);
-    const NUM_COLS = new Set(['VALOR']);
-    const BIG_COLS = new Set(['FATURA']);
-    const coerce = (r) => {
-      const o = {};
-      Object.keys(r).forEach(k => {
-        if (!VALID_COLS.has(k)) return;
-        let v = r[k];
-        if (v === '' || v === undefined || v === null || v === 'nan' || v === 'null') { o[k] = null; return; }
-        if (BIG_COLS.has(k) || NUM_COLS.has(k)) { const n = parseFloat(v); o[k] = isNaN(n) ? null : n; return; }
-        if (INT_COLS.has(k)) { const n = parseInt(v); o[k] = isNaN(n) ? null : n; return; }
-        o[k] = v;
-      });
-      return o;
-    };
+    // rows ja foi declarado como const acima, reusar rowsFiltradas diretamente
+    let conectadas=[],offset=0;
+    while(true){const{data}=await sb.from('conectadas').select('TELEFONE_PORTADO,NUMERO_LINHA,PORTABILIDADE,NOME,EQUIPE').range(offset,offset+999);if(!data||!data.length)break;conectadas.push(...data);if(data.length<1000)break;offset+=1000;}
+    const mapaPort={};
+    conectadas.forEach(c=>{
+      const tel=limpaTel(c.TELEFONE_PORTADO), lin=limpaTel(c.NUMERO_LINHA);
+      // Normalizar portabilidade para o valor completo da tabela conectadas
+      const port = c.PORTABILIDADE||'';
+      const obj={portabilidade:port, nome:c.NOME||'', equipe:c.EQUIPE||''};
+      if(tel) mapaPort[tel]=obj;
+      if(lin) mapaPort[lin]=obj;
+      // Tambem indexar sem slice(-11) para cobrir numeros com menos digitos
+      const tel9=String(c.TELEFONE_PORTADO||'').replace(/\D/g,'');
+      const lin9=String(c.NUMERO_LINHA||'').replace(/\D/g,'');
+      if(tel9&&!mapaPort[tel9]) mapaPort[tel9]=obj;
+      if(lin9&&!mapaPort[lin9]) mapaPort[lin9]=obj;
+    });
+    setUploadProgress(true,'Processando...',40);
+    const getCol=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
+    const safraDate=parseSafra(safra);
+    const registros=rows.map(row=>{
+      const numAcesso=limpaTel(getCol(row,'Numero de acesso','N\u00c3\u00bamero de acesso','N\u00famero de acesso','NUMERO_ACESSO'));
+      const cpf=(getCol(row,'Cpf','CPF')+'').replace(/\D/g,'');
+      const statusAcesso=getCol(row,'Status do numero de acesso','Status do n\u00c3\u00bamero de acesso','Status do n\u00famero de acesso','STATUS_ACESSO');
 
-    // MODO ATUALIZAR: faz UPDATE por NUMERO DE ACESSO (nao duplica) + detecta pagamentos
-    if (modo === 'atualizar') {
-      // 1. Buscar estado ATUAL do banco para comparar (detectar pagamentos)
-      setUploadProgress(true, 'Carregando estado atual para comparar...', 40);
-      const estadoAntes = {};
-      let _from = 0;
-      while (true) {
-        const { data, error } = await sb.from('controle_envio')
-          .select('"NUMERO DE ACESSO","STATUS PAGAMENTO","STATUS 1\u00aa FATURA","STATUS 2\u00aa FATURA","ETAPA","VALOR","FATURA","CPF","NOME","NUMERO PORTADO","VENCIMENTO","PORTABILIDADE","DIAS ATRASO"')
-          .eq('SAFRA', safra).range(_from, _from + 999);
-        if (error || !data || data.length === 0) break;
-        data.forEach(d => { estadoAntes[d['NUMERO DE ACESSO']] = d; });
-        if (data.length < 1000) break;
-        _from += 1000;
+      // Le os dados de uma fatura especifica (i = 1, 2 ou 3) do arquivo de origem,
+      // SEMPRE - paga ou aberta - pois a regra de estorno precisa do status das duas.
+      const lerFatura=(i)=>{
+        const status=getCol(row,...[i+'\u00aa fatura - Status da fatura',i+'a fatura - Status da fatura']);
+        const venc=getCol(row,...[i+'\u00aa fatura - Data de vencimento',i+'a fatura - Data de vencimento'])||'';
+        const valStr=getCol(row,...[i+'\u00aa fatura - Pre\u00e7o da fatura',i+'\u00aa fatura - Preco da fatura',i+'a fatura - Pre\u00e7o da fatura'])||'0';
+        const val=parseFloat(String(valStr).replace('R$','').replace(/\./g,'').replace(',','.'))||0;
+        const num=getCol(row,...[i+'\u00aa fatura - N\u00famero da fatura',i+'a fatura - N\u00famero da fatura'])||'';
+        const dias=parseInt(getCol(row,...[i+'\u00aa fatura - Dias de atraso',i+'a fatura - Dias de atraso'])||'0')||0;
+        const linha=getCol(row,...[i+'\u00aa fatura - Linha digit\u00e1vel',i+'a fatura - Linha digit\u00e1vel'])||'';
+        return {status:status||'', venc, val, num, dias, linha, vencISO: venc?converteData(venc):null};
+      };
+      const f1=lerFatura(1);
+      const f2=lerFatura(2);
+
+      // Campo "fatura mais urgente aberta" - mantido para compatibilidade com
+      // dashboard, disparo (n8n) e exports que ja usam VALOR/VENCIMENTO/STATUS PAGAMENTO/FATURA genericos
+      const faturasAbertas=[f1,f2].filter(f=>(f.status||'').toLowerCase()==='aberta');
+      faturasAbertas.sort((a,b)=>a.venc<b.venc?-1:1);
+      let fatNum='',fatVal=0,fatVenc='',fatStatus='',fatLinha='',diasAtraso=0;
+      if(faturasAbertas.length>0){
+        const f=faturasAbertas[0];
+        fatNum=f.num;fatVal=f.val;fatVenc=f.venc;fatStatus='Aberta';fatLinha=f.linha;diasAtraso=f.dias;
+      }else{
+        fatStatus=f1.status||'Sem fatura';
       }
 
-      const pagamentosDetectados = [];
-      const hoje = new Date().toISOString().slice(0,10);
+      // Tentar lookup com 11 digitos e tambem com numero completo
+      const numAcessoFull=String(getCol(row,'Numero de acesso','N\u00famero de acesso','N\u00c3\u00bamer de acesso',
+        'N\u00c3\u00bamer de acesso','NUMERO_ACESSO','')||'').replace(/\D/g,'');
+      const matched=mapaPort[numAcesso]||mapaPort[numAcessoFull]||null;
+      const portabilidade=matched?matched.portabilidade:'Portabilidade nao Concluida';
+      const nomeCon=matched?matched.nome:'';
+      const equipe=matched?matched.equipe:'';
+      const etapa=determinarEtapa(diasAtraso,portabilidade,statusAcesso,fatStatus);
+      const vencISO=fatVenc?converteData(fatVenc):null;
 
-      for (let i = 0; i < registros.length; i++) {
-        const pct = 45 + (i / registros.length * 50);
-        if (i % 50 === 0) setUploadProgress(true, 'Atualizando ' + (i+1) + '/' + registros.length + '...', pct);
-        const r = coerce(registros[i]);
-        const numAcesso = r['NUMERO DE ACESSO'];
-        if (!numAcesso) { erros++; continue; }
-
-        // Detectar pagamento: estava Aberta no banco e agora esta Paga
-        const antes = estadoAntes[numAcesso];
-        if (antes) {
-          const eraAberta = antes['STATUS PAGAMENTO'] === 'Aberta';
-          const agoraPaga = r['STATUS PAGAMENTO'] !== 'Aberta' && r['STATUS PAGAMENTO'];
-          if (eraAberta && agoraPaga) {
-            // Cliente pagou! Registrar
-            let diasAte = null;
-            if (antes['VENCIMENTO']) {
-              const venc = new Date(antes['VENCIMENTO']);
-              const dt = new Date(hoje);
-              diasAte = Math.round((dt - venc) / 86400000);
+      // Objeto usado SOMENTE para classificar estorno - usa os campos dedicados
+      // de 1a e 2a fatura, nao os campos genericos de "fatura mais urgente"
+      const tmpCliente={
+        'STATUS ACESSO':statusAcesso,
+        'VENCIMENTO 1A FATURA':f1.vencISO,
+        'STATUS 1A FATURA':f1.status,
+        'VENCIMENTO 2A FATURA':f2.vencISO,
+        'STATUS 2A FATURA':f2.status
+      };
+      const{estorno,tipo:tipoEstorno}=classificarEstorno(tmpCliente,safraDate);
+      const dataProcRaw = getDataProcessamento(row);
+      const dataProc = converteData(dataProcRaw)||dataProcRaw||null;
+      return{
+      SAFRA:safra,
+      CPF:cpf,
+      'DATA PROCESSAMENTO':dataProc||null,
+      NOME:nomeCon,
+      'NUMERO DE ACESSO':numAcesso,
+      'NUMERO PORTADO':numAcesso,
+      'NUMERO LINHA':numAcesso,
+      'STATUS ACESSO':statusAcesso,
+      FATURA:fatNum||null,
+      'STATUS PAGAMENTO':fatStatus||null,
+      VALOR:fatVal||null,
+      VENCIMENTO:vencISO||null,
+      'DIAS ATRASO':diasAtraso||null,
+      'LINHA DIGITAVEL':fatLinha||null,
+      // Campos dedicados por fatura - usados pela regra de estorno e tela de detalhe
+      'VENCIMENTO 1A FATURA':f1.vencISO||null,
+      'STATUS 1A FATURA':f1.status||null,
+      'VALOR 1A FATURA':f1.val||null,
+      'DIAS ATRASO 1A FATURA':f1.dias||null,
+      'LINHA DIGITAVEL 1A FATURA':f1.linha||null,
+      'VENCIMENTO 2A FATURA':f2.vencISO||null,
+      'STATUS 2A FATURA':f2.status||null,
+      'VALOR 2A FATURA':f2.val||null,
+      'DIAS ATRASO 2A FATURA':f2.dias||null,
+      'LINHA DIGITAVEL 2A FATURA':f2.linha||null,
+      PORTABILIDADE:portabilidade||null,
+      EQUIPE:equipe||null,
+      ETAPA:etapa||null,
+      ESTORNO:estorno,
+      TIPO_ESTORNO:tipoEstorno||null
+    };
+    });
+    setUploadProgress(true,'Enviando para Supabase...',60);
+    let inseridos=0,atualizados=0,erros=0;
+    for(let i=0;i<registros.length;i+=500){
+      const batch=registros.slice(i,i+500);
+      setUploadProgress(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registros.length/500)+'...',60+(i/registros.length*35));
+      // Valid DB columns only - exact names (usado em ambos os modos)
+      const VALID_COLS = new Set(['SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','NUMERO LINHA',
+        'STATUS ACESSO','FATURA','STATUS PAGAMENTO','VALOR','VENCIMENTO','DIAS ATRASO','LINHA DIGITAVEL',
+        'VENCIMENTO 1A FATURA','STATUS 1A FATURA','VALOR 1A FATURA','DIAS ATRASO 1A FATURA','LINHA DIGITAVEL 1A FATURA',
+        'VENCIMENTO 2A FATURA','STATUS 2A FATURA','VALOR 2A FATURA','DIAS ATRASO 2A FATURA','LINHA DIGITAVEL 2A FATURA',
+        'PORTABILIDADE','EQUIPE','ETAPA','ESTORNO','TIPO_ESTORNO',
+        'DATA PROCESSAMENTO']);
+      const cleanBatch=batch.map(r=>{
+        const o={};
+        Object.keys(r).forEach(k=>{
+          if(VALID_COLS.has(k)){
+            o[k] = (r[k]===''||r[k]===undefined) ? null : r[k];
+          }
+        });
+        return o;
+      });
+      if(modo==='nova'){
+        // Chave: NUMERO DE ACESSO + SAFRA (1 linha por cliente/safra, com as 2 faturas embutidas)
+        const{error}=await sb.from('controle_envio').upsert(cleanBatch,{onConflict:'NUMERO DE ACESSO,SAFRA',ignoreDuplicates:false});
+        if(error){erros+=batch.length;console.error('upsert error:',error.message,error.details,JSON.stringify(cleanBatch[0]));}else inseridos+=batch.length;
+      }else{
+        // Modo ATUALIZAR (baixa de pagamento) - upsert na mesma chave garante
+        // que a linha existente do cliente/safra seja atualizada por completo,
+        // incluindo status/vencimento/valor das DUAS faturas e o recalculo de ESTORNO.
+        const{error}=await sb.from('controle_envio').upsert(cleanBatch,{onConflict:'NUMERO DE ACESSO,SAFRA',ignoreDuplicates:false});
+        if(error){erros+=batch.length;console.error('update error:',error.message,error.details);}else atualizados+=batch.length;
+        // Identificar pagamentos automaticamente (1a e 2a fatura separadas)
+        for(const p of batch){
+          const baixas=[
+            {fat:'1', status:p['STATUS 1A FATURA'], valor:p['VALOR 1A FATURA'], venc:p['VENCIMENTO 1A FATURA']},
+            {fat:'2', status:p['STATUS 2A FATURA'], valor:p['VALOR 2A FATURA'], venc:p['VENCIMENTO 2A FATURA']}
+          ];
+          for(const b of baixas){
+            if((b.status||'').toLowerCase()==='paga'){
+              try{await sb.from('historico_pagamentos').upsert({'SAFRA':p['SAFRA'],'CPF':p['CPF'],'NOME':p['NOME'],'NUMERO PORTADO':p['NUMERO PORTADO'],'FATURA':b.fat,'VALOR':b.valor,'VENCIMENTO':b.venc,'DATA PAGAMENTO':new Date().toISOString().slice(0,10),'created_at':new Date().toISOString()},{onConflict:'SAFRA,NUMERO PORTADO,FATURA',ignoreDuplicates:true});}catch(e){}
             }
-            pagamentosDetectados.push({
-              'SAFRA': safra,
-              'CPF': antes['CPF'] || r['CPF'],
-              'NOME': antes['NOME'] || r['NOME'],
-              'NUMERO DE ACESSO': numAcesso,
-              'NUMERO PORTADO': antes['NUMERO PORTADO'] || r['NUMERO PORTADO'],
-              'FATURA': antes['FATURA'] || r['FATURA'],
-              'VALOR': antes['VALOR'] || r['VALOR'],
-              'VENCIMENTO': antes['VENCIMENTO'] || null,
-              'PORTABILIDADE': antes['PORTABILIDADE'] || r['PORTABILIDADE'],
-              'ETAPA NO PAGAMENTO': antes['ETAPA'] || 'Sem etapa',
-              'TIPO DE ENVIO': 'Atualizacao RPA',
-              'DATA PAGAMENTO': hoje,
-              'DIAS AT\u00c9 PAGAMENTO': diasAte
-            });
           }
         }
-
-        const _acionavel = (r['STATUS ACESSO'] === 'Ativo' && r['STATUS PAGAMENTO'] === 'Aberta');
-        const updateData = {
-          'STATUS ACESSO':    r['STATUS ACESSO'],
-          'STATUS 1\u00aa FATURA': r['STATUS 1\u00aa FATURA'],
-          'STATUS 2\u00aa FATURA': r['STATUS 2\u00aa FATURA'],
-          'STATUS PAGAMENTO': r['STATUS PAGAMENTO'],
-          'VALOR':            r['VALOR'],
-          'VENCIMENTO':       r['VENCIMENTO'],
-          'VENCIMENTO 1A FATURA': r['VENCIMENTO 1A FATURA'],
-          'DIAS ATRASO':      r['DIAS ATRASO'],
-          'FATURA':           r['FATURA'],
-          'LINHA DIGITAVEL':  r['LINHA DIGITAVEL'],
-          'ETAPA':            r['ETAPA'],
-          'ESTORNO':          r['ESTORNO'],
-          'TIPO_ESTORNO':     r['TIPO_ESTORNO'],
-          'ACIONAVEL':        _acionavel,
-          'DATA PROCESSAMENTO': r['DATA PROCESSAMENTO']
-        };
-        const {error} = await sb.from('controle_envio').update(updateData)
-          .eq('SAFRA', safra).eq('NUMERO DE ACESSO', numAcesso);
-        if (error) { erros++; console.error('Update error:', error.message); }
-        else inseridos++;
-      }
-
-      // 2. Inserir pagamentos detectados
-      let pagsSalvos = 0;
-      if (pagamentosDetectados.length > 0) {
-        setUploadProgress(true, 'Registrando ' + pagamentosDetectados.length + ' pagamentos...', 96);
-        for (let j = 0; j < pagamentosDetectados.length; j += 500) {
-          const lote = pagamentosDetectados.slice(j, j+500);
-          const { error } = await sb.from('historico_pagamentos').insert(lote);
-          if (!error) pagsSalvos += lote.length;
-          else console.error('Erro ao salvar pagamentos:', error.message);
-        }
-      }
-
-      setUploadProgress(false, '', 100);
-      console.log('Pagamentos detectados:', pagsSalvos);
-      const msg = 'Status atualizado! ' + fmt(inseridos) + ' registros' +
-        (pagsSalvos > 0 ? ' - ' + fmt(pagsSalvos) + ' pagamentos detectados' : '') +
-        (erros > 0 ? ' - ' + fmt(erros) + ' erros' : '');
-      result.innerHTML = '<div class="alert alert-ok">' + msg + '</div>';
-      await carregarControle();
-      if (typeof carregarHistorico === 'function') await carregarHistorico();
-      atualizarDashboard();
-      return;
-    }
-
-    // MODO NOVA: INSERT em batches
-    for (let i = 0; i < registros.length; i += 500) {
-      const pct = 45 + (i / registros.length * 50);
-      setUploadProgress(true,
-        'Enviando lote ' + (Math.floor(i/500)+1) + '/' + Math.ceil(registros.length/500) + '...', pct);
-
-      const batch = registros.slice(i, i+500).map(coerce);
-
-      const {error} = await sb.from('controle_envio').insert(batch);
-
-      if (error) {
-        erros += batch.length;
-        console.error('Batch error:', error.message, error.details, error.hint);
-        // Log first record of failed batch for debugging
-        if (erros === batch.length) {
-          console.error('First record sample:', JSON.stringify(batch[0]));
-        }
-      } else {
-        inseridos += batch.length;
       }
     }
-
-    // 6. Salvar snapshot do dia com GROSS das conectadas
-    try {
-      const mesStr = String(mesNum).padStart(2,'0');
-      const mesNext = mesNum === 12 ? 1 : mesNum + 1;
-      const anoNext = mesNum === 12 ? anoNum + 1 : anoNum;
-      const {count} = await sb.from('conectadas')
-        .select('*', {count:'exact', head:true})
-        .gte('DATA_ATIVACAO', anoNum+'-'+mesStr+'-01')
-        .lt('DATA_ATIVACAO', anoNext+'-'+String(mesNext).padStart(2,'0')+'-01');
-      const gross = count || registros.length;
-      const totalEst = registros.filter(r => r.ESTORNO).length;
-      const pctEst = gross > 0 ? (totalEst / gross * 100).toFixed(1) : '0';
-      await sb.from('snapshots_estorno').upsert({
-        SAFRA: safra, DATA: new Date().toISOString().slice(0,10),
-        PCT_ESTORNO: parseFloat(pctEst), ESTORNO: totalEst, GROSS: gross
-      }, {onConflict: 'SAFRA,DATA'});
-    } catch(e) { console.warn('Snapshot error:', e); }
-
-    // 7. Log de upload
-    try {
-      await sb.from('historico_uploads').insert({
-        safra, modo,
-        total_registros: registros.length + descartados,
-        inseridos: modo==='nova' ? inseridos : 0,
-        atualizados: modo==='atualizar' ? inseridos : 0,
-        erros, status: erros===0 ? 'Sucesso' : 'Parcial',
-        created_at: new Date().toISOString()
-      });
-    } catch(e) {}
-
-    setUploadProgress(false, '', 100);
-
-    const msg = 'Upload concluido! ' + fmt(inseridos) + ' registros' +
-      (descartados > 0 ? ' (' + fmt(descartados) + ' filtrados por data de ativacao)' : '') +
-      (erros > 0 ? ' - ' + fmt(erros) + ' erros' : '');
-    result.innerHTML = '<div class="alert alert-ok">' + msg + '</div>';
-
+    // Salvar snapshot do dia
+    const totalEstorno=registros.filter(r=>r['ESTORNO']).length;
+    const pctSnap=registros.length>0?(totalEstorno/registros.length*100).toFixed(1):'0';
+    await salvarSnapshot(safra,pctSnap,totalEstorno,registros.length);
+    await sb.from('historico_uploads').insert({safra,modo,total_registros:registros.length,inseridos:modo==='nova'?inseridos:0,atualizados:modo==='atualizar'?atualizados:0,erros,status:erros===0?'Sucesso':'Parcial',created_at:new Date().toISOString()});
+    setUploadProgress(false,'',100);
+    result.innerHTML='<div class="alert alert-ok">Upload concluido! '+fmt(modo==='nova'?inseridos:atualizados)+' registros '+(modo==='nova'?'inseridos':'atualizados')+(erros>0?' - '+erros+' erros':'')+'.</div>';
     await carregarControle();
     atualizarDashboard();
-
-  } catch(e) {
-    setUploadProgress(false, '', 0);
-    result.innerHTML = '<div class="alert alert-err">Erro: ' + e.message + '</div>';
-    console.error(e);
-  }
+  }catch(e){setUploadProgress(false,'',0);result.innerHTML='<div class="alert alert-err">Erro: '+e.message+'</div>';console.error(e);}
 }
-
-
 function setUploadProgress(show,text,pct){const div=document.getElementById('upload-progress');div.style.display=show?'block':'none';document.getElementById('upload-status-text').textContent=text;document.getElementById('upload-bar').style.width=pct+'%';document.getElementById('upload-detail').textContent=show?Math.round(pct)+'% concluido':'';}
 function lerArquivoLatin1(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>resolve(e.target.result);reader.onerror=reject;reader.readAsText(file,'latin1');});}
-function parseCSV(text){
-  // Robust RFC4180 parser - handles quoted fields with commas inside
-  function parseLine(line, sep) {
-    const fields = [];
-    let cur = '', inQ = false;
-    for (let i = 0; i < line.length; i++) {
-      const c = line[i];
-      if (c === '"') {
-        if (inQ && line[i+1] === '"') { cur += '"'; i++; }
-        else inQ = !inQ;
-      } else if (c === sep && !inQ) {
-        fields.push(cur); cur = '';
-      } else {
-        cur += c;
-      }
-    }
-    fields.push(cur);
-    return fields;
-  }
-  const lines = text.split('\n');
-  const nonEmpty = lines.filter(l => l.trim());
-  if (nonEmpty.length < 2) return [];
-  const sep = nonEmpty[0].includes(';') ? ';' : ',';
-  const headers = parseLine(nonEmpty[0], sep).map(h => h.trim());
-  const result = [];
-  for (let i = 1; i < nonEmpty.length; i++) {
-    if (!nonEmpty[i].trim()) continue;
-    const vals = parseLine(nonEmpty[i], sep);
-    const obj = {};
-    headers.forEach((h, j) => { obj[h] = (vals[j]||'').trim(); });
-    result.push(obj);
-  }
-  return result;
-}
+function parseCSV(text){const lines=text.split('\n').filter(l=>l.trim());if(lines.length<2)return[];const sep=lines[0].includes(';')?';':',';const headers=lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));return lines.slice(1).filter(l=>l.trim()).map(line=>{const vals=line.split(sep).map(v=>v.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,i)=>obj[h]=vals[i]||'');return obj;});}
 function limpaTel(v){return String(v||'').replace(/\D/g,'').slice(-11);}
 function converteData(v){if(!v)return null;const p=v.split('/');if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return v;}
 function determinarEtapa(dias,portabilidade,statusAcesso,statusFatura){
@@ -2037,28 +1723,14 @@ function atualizarDashboard(){
   setEl('d-port-ok',fmt(portOk));setEl('d-port-nok',fmt(data.length-portOk));
   setEl('d-port-pct',data.length>0?(portOk/data.length*100).toFixed(1)+'%':'--');
   setEl('d-pag',fmt(dadosHistorico.length));
-  // Estorno geral - usa GROSS do snapshot se disponivel
+  // Estorno geral
   const safras=[...new Set(data.map(r=>r['SAFRA']).filter(Boolean))];
-  let totalEstorno=0, totalGross=0;
-  safras.forEach(s=>{
-    const res=calcularEstornoPorSafra(s);
-    totalEstorno+=res.estornoTratado;
-    totalGross+=res.gross;
-  });
-  const grossFinal = totalGross || data.length;
-  setEl('d-estorno', grossFinal>0?(totalEstorno/grossFinal*100).toFixed(1)+'%':'--');
+  let totalEstorno=0;
+  safras.forEach(s=>{const res=calcularEstornoPorSafra(s);totalEstorno+=res.estornoTratado;});
+  setEl('d-estorno',data.length>0?(totalEstorno/data.length*100).toFixed(1)+'%':'--');
   renderRespostas();
   renderGraficoVenc();
   renderGraficoPort();
-  // Populate safra selector in dashboard
-  const safrasDash = [...new Set(dadosControle.map(r=>r['SAFRA']).filter(Boolean))].sort();
-  const selDash = document.getElementById('sel-dash-safra');
-  if (selDash) {
-    const cur = selDash.value;
-    selDash.innerHTML = '<option value="">Todas as safras</option>' + safrasDash.map(s=>'<option'+(s===cur?' selected':'')+'>'+s+'</option>').join('');
-    if (!cur && safrasDash.length) selDash.value = safrasDash[safrasDash.length-1];
-  }
-  atualizarDetDash();
 }
 function renderGraficoVenc(){
   if(typeof Plotly==='undefined')return;
@@ -2098,25 +1770,7 @@ async function processarConectadas(file) {
     if(typeof XLSX!=='undefined'){
       const wb=XLSX.read(arrayBuffer,{type:'array',cellDates:true});
       const ws=wb.Sheets[wb.SheetNames[0]];
-      // Read with raw:true to get serial numbers, convert manually
-      const rawRows=XLSX.utils.sheet_to_json(ws,{raw:true,defval:null});
-      rows=rawRows.map(r=>{
-        const out={};
-        Object.keys(r).forEach(k=>{
-          const v=r[k];
-          // Excel date serial: integers between 30000-50000 are dates
-          if(typeof v==='number'&&v>30000&&v<50000&&Number.isInteger(v)){
-            // Convert Excel serial to YYYY-MM-DD
-            const d=new Date(Date.UTC(1899,11,30)+(v*86400000));
-            out[k]=d.toISOString().slice(0,10);
-          } else if(v instanceof Date){
-            out[k]=v.toISOString().slice(0,10);
-          } else {
-            out[k]=v===null||v===undefined?'':String(v);
-          }
-        });
-        return out;
-      });
+      rows=XLSX.utils.sheet_to_json(ws,{raw:false,dateNF:'yyyy-mm-dd'});
     } else {
       const text=await new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(file,'latin1');});
       rows=parseCSV(text);
@@ -2217,117 +1871,6 @@ async function carregarGrossPorMes() {
   } catch(e){div.innerHTML='<div class="alert alert-err">Erro: '+e.message+'</div>';}
 }
 
-
-function atualizarDetDash() {
-  const safra = (document.getElementById('sel-dash-safra')||{}).value||'';
-  if (!safra) return;
-  const res = calcularEstornoPorSafra(safra);
-  const pctNum = parseFloat(res.pctEstorno);
-  const pctCor = pctNum > 38 ? 'var(--red)' : 'var(--green)';
-
-  setEl('d-gross', fmt(res.gross));
-  const el2 = document.getElementById('d-estorno2');
-  if (el2) { el2.textContent = res.pctEstorno+'%'; el2.style.color = pctCor; }
-  setEl('d-meta', fmt(res.metaEstorno));
-  setEl('d-reducao', fmt(res.reducao));
-
-  // Also update main estorno card
-  const elMain = document.getElementById('d-estorno');
-  if (elMain) { elMain.textContent = res.pctEstorno+'%'; elMain.style.color = pctCor; }
-
-  // Detalhamento table
-  const det = res.det;
-  const total = res.gross || 1;
-  const linhas = [
-    {label:'SEM ESTORNO',              val:det['SEM ESTORNO']||0,              estorno:false},
-    {label:'1 FATURA PAGA',            val:det['1 FATURA PAGA']||0,            estorno:false},
-    {label:'1 FATURA ABERTA',          val:det['1 FATURA ABERTA']||0,          estorno:true},
-    {label:'2 FATURAS - 2 PGS',        val:det['2 FATURAS - 2 PGS']||0,        estorno:false},
-    {label:'2 FATURAS (2 ABERTA)',      val:det['2 FATURAS (2 ABERTA)']||0,     estorno:true},
-    {label:'2 FATURAS (1 PAGA 2 ABERTA)',val:det['2 FATURAS (1 PAGA 2 ABERTA)']||0,estorno:true},
-    {label:'2 FATURAS (1 ABERTO 2 PAGA)',val:det['2 FATURAS (1 ABERTO 2 PAGA)']||0,estorno:true},
-    {label:'CANCELADO',                val:det['CANCELADO']||0,                estorno:true},
-  ];
-  const el = document.getElementById('det-dash-faturas');
-  if (!el) return;
-  el.innerHTML = linhas.map(l => {
-    const pct = total > 0 ? (l.val/total*100).toFixed(1) : '0';
-    const cor = l.estorno ? 'var(--red)' : 'var(--green)';
-    const dot = '<div style="width:8px;height:8px;border-radius:50%;background:'+cor+';flex-shrink:0"></div>';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.4rem .9rem;border-bottom:1px solid var(--border)">' +
-      '<div style="display:flex;align-items:center;gap:.6rem">'+dot+'<span style="font-size:.8rem">'+l.label+'</span></div>' +
-      '<div style="display:flex;align-items:center;gap:1.2rem">' +
-        '<span style="font-size:.73rem;color:var(--text-light);min-width:38px;text-align:right">'+pct+'%</span>' +
-        '<span style="font-weight:700;color:'+cor+';font-family:monospace;min-width:55px;text-align:right">'+fmt(l.val)+'</span>' +
-      '</div></div>';
-  }).join('');
-}
-
-
-function filtrarHistEnvios() {
-  const de    = (document.getElementById('filt-he-de')||{}).value||'';
-  const ate   = (document.getElementById('filt-he-ate')||{}).value||'';
-  const safra = (document.getElementById('filt-he-safra')||{}).value||'';
-  const etapa = (document.getElementById('filt-he-etapa')||{}).value||'';
-
-  let data = dadosHistEnvios;
-  if (safra) data = data.filter(r => r['SAFRA']===safra);
-  if (etapa) data = data.filter(r => r[etapa] || r[etapa.replace(' ','_')]);
-  if (de) {
-    data = data.filter(r => {
-      // Check any etapa date >= de
-      return ETAPA_ORDER.some(e => {
-        const v = r[e]||r[e.replace(' ','_')]||'';
-        return v && v >= de;
-      });
-    });
-  }
-  if (ate) {
-    data = data.filter(r => {
-      return ETAPA_ORDER.some(e => {
-        const v = r[e]||r[e.replace(' ','_')]||'';
-        return v && v <= ate;
-      });
-    });
-  }
-
-  renderHistEnviosData(data);
-}
-
-function limparFiltrosHE() {
-  ['filt-he-de','filt-he-ate','filt-he-safra','filt-he-etapa'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  filtrarHistEnvios();
-}
-
-function renderHistEnviosData(data) {
-  const comMsg = data.filter(r => ETAPA_ORDER.some(e => r[e]||r[e.replace(' ','_')])).length;
-  const ec = {}; 
-  ETAPA_ORDER.forEach(e => { ec[e] = data.filter(r => r[e]||r[e.replace(' ','_')]).length; });
-  const melhor = Object.entries(ec).sort((a,b)=>b[1]-a[1])[0]?.[0]||'--';
-  setEl('he-total', fmt(data.length));
-  setEl('he-rec', fmt(comMsg));
-  setEl('he-etapa', melhor);
-  const tbody = document.getElementById('tbody-hist-envios');
-  if (!data.length) {
-    tbody.innerHTML = '<tr><td colspan="15"><div class="empty-state"><p>Nenhum envio encontrado</p></div></td></tr>';
-    return;
-  }
-  tbody.innerHTML = data.slice(0,200).map(r =>
-    '<tr><td>'+(r['SAFRA']||'')+'</td><td>'+(r['NOME']||'')+'</td>' +
-    '<td class="mono">'+(r['NUMERO PORTADO']||r['NUMERO_PORTADO']||'')+'</td>' +
-    '<td class="mono">'+(r['CPF']||'')+'</td>' +
-    '<td>'+(r['PORTABILIDADE']||'')+'</td>' +
-    '<td>'+(r['EQUIPE']||'')+'</td>' +
-    ETAPA_ORDER.map(e => {
-      const v = r[e]||r[e.replace(' ','_')]||'';
-      return '<td style="color:'+(v?'#16A34A':'#9CA3AF')+'">'+(v?fmtData(v):'--')+'</td>';
-    }).join('') + '</tr>'
-  ).join('');
-}
-
 // UTILS
 function fmt(n){return n!=null?Number(n).toLocaleString('pt-BR'):'--';}
 function fmtBRL(v){const n=parseFloat(v);if(isNaN(n)||v==null||v==='')return'--';return'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -2341,91 +1884,6 @@ function mostrarLoading(msg){document.getElementById('loading-text').textContent
 function ocultarLoading(){document.getElementById('loading-overlay').classList.remove('show');}
 
 
-
-
-async function recalcularEstorno() {
-  const btn = document.getElementById('btn-recalc');
-  const result = document.getElementById('recalc-result');
-  const mesEl = document.getElementById('inp-safra-mes');
-  const anoEl = document.getElementById('inp-safra-ano');
-  const mes = mesEl ? mesEl.value : '';
-  const ano = anoEl ? anoEl.value : '';
-  if (!mes || !ano) {
-    result.innerHTML = '<div class="alert alert-err">Selecione mes e ano da safra primeiro</div>';
-    return;
-  }
-  const safra = mes + ' ' + ano;
-  const safraDate = parseSafra(safra);
-  if (!safraDate) {
-    result.innerHTML = '<div class="alert alert-err">Safra invalida: ' + safra + '</div>';
-    return;
-  }
-  btn.disabled = true;
-  result.innerHTML = '<div style="color:var(--text-light)">Carregando registros da safra ' + safra + '...</div>';
-
-  try {
-    // Buscar todos os registros da safra
-    let todos = [];
-    let from = 0;
-    const pageSize = 1000;
-    while (true) {
-      const { data, error } = await sb.from('controle_envio')
-        .select('id,"STATUS ACESSO","STATUS 1\u00aa FATURA","STATUS 2\u00aa FATURA","VENCIMENTO 1A FATURA","VENCIMENTO","DIAS ATRASO","STATUS PAGAMENTO","PORTABILIDADE"')
-        .eq('SAFRA', safra)
-        .range(from, from + pageSize - 1);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      todos = todos.concat(data);
-      if (data.length < pageSize) break;
-      from += pageSize;
-    }
-
-    if (todos.length === 0) {
-      result.innerHTML = '<div class="alert alert-err">Nenhum registro encontrado para ' + safra + '</div>';
-      btn.disabled = false;
-      return;
-    }
-
-    result.innerHTML = '<div style="color:var(--text-light)">Recalculando ' + fmt(todos.length) + ' registros...</div>';
-
-    // 1. Classificar tudo em memoria (rapido)
-    let atualizados = 0, erros = 0, estornoCount = 0;
-    const updates = [];
-    for (let i = 0; i < todos.length; i++) {
-      const r = todos[i];
-      const _est = classificarEstorno(r, safraDate);
-      const temAberta = r['STATUS PAGAMENTO'] === 'Aberta';
-      const dias = parseInt(r['DIAS ATRASO']) || 0;
-      const etapa = calcEtapa(dias, r['PORTABILIDADE'], r['STATUS ACESSO'], temAberta, _est.estorno);
-      if (_est.estorno) estornoCount++;
-      updates.push({ id: r.id, 'ESTORNO': _est.estorno, 'TIPO_ESTORNO': _est.tipo, 'ETAPA': etapa });
-    }
-
-    // 2. Salvar em lotes de 500 via upsert (1 requisicao por lote em vez de 1 por registro)
-    const LOTE = 500;
-    for (let i = 0; i < updates.length; i += LOTE) {
-      const lote = updates.slice(i, i + LOTE);
-      result.innerHTML = '<div style="color:var(--text-light)">Salvando ' + Math.min(i+LOTE, updates.length) + '/' + updates.length + '...</div>';
-      const { error } = await sb.from('controle_envio').upsert(lote, { onConflict: 'id' });
-      if (error) { erros += lote.length; console.error('Upsert erro:', error.message); }
-      else { atualizados += lote.length; }
-    }
-
-    const pct = (estornoCount / todos.length * 100).toFixed(1);
-    result.innerHTML = '<div class="alert alert-ok">Recalculo concluido! ' + fmt(atualizados) +
-      ' registros atualizados, ' + fmt(estornoCount) + ' em estorno (' + pct + '%)' +
-      (erros > 0 ? ' - ' + erros + ' erros' : '') + '</div>';
-
-    // Recarregar dados do painel
-    await carregarControle();
-    if (typeof atualizarDashboard === 'function') atualizarDashboard();
-
-  } catch (e) {
-    result.innerHTML = '<div class="alert alert-err">Erro: ' + e.message + '</div>';
-    console.error(e);
-  }
-  btn.disabled = false;
-}
 </script>
 </body>
 </html>
