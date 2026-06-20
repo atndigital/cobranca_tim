@@ -783,23 +783,29 @@ function calcularEstornoPorSafra(safra) {
   const ativos = dados.filter(r => r['STATUS ACESSO'] === 'Ativo');
   const cancelados = dados.filter(r => r['STATUS ACESSO'] !== 'Ativo');
 
+  // Lista UNICA de categorias para exibicao (formato simples, sem duplicar
+  // resumo + detalhamento). Cada cliente cai em exatamente uma categoria.
   const det = {
     'SEM ESTORNO': 0,
-    '1 FATURA': 0,
-    '2 FATURAS': 0,
-    'CANCELADO': 0,
-    'AGUARDANDO FATURA': 0
+    '1 FATURA PAGA': 0,
+    '1 FATURA ABERTA': 0,
+    '2 FATURAS - 2 PGS': 0,
+    '2 FATURAS (2 ABERTA)': 0,
+    '2 FATURAS (1 PAGA 2 ABERTA)': 0,
+    '2 FATURAS (1 ABERTO 2 PAGA)': 0,
+    'AGUARDANDO FATURA': 0,
+    'CANCELADO': 0
   };
-
-  // Detalhamento - SOMENTE para exibicao. Nunca decide estorno por conta propria;
-  // so descreve, de forma simples (igual planilha Excel), a combinacao que levou
-  // a decisao que classificarEstorno ja tomou:
-  // 1) vencimento da 1a fatura define se o cliente e "1 FATURA" (maio) ou "2 FATURAS" (mar/abr)
-  // 2) o status de cada fatura define se entra como estorno ou nao
-  const detGranular = {};
-  const incrGranular = (label, estorno) => {
-    if (!detGranular[label]) detGranular[label] = {val: 0, estorno};
-    detGranular[label].val++;
+  const detEstorno = {
+    'SEM ESTORNO': false,
+    '1 FATURA PAGA': false,
+    '1 FATURA ABERTA': true,
+    '2 FATURAS - 2 PGS': false,
+    '2 FATURAS (2 ABERTA)': true,
+    '2 FATURAS (1 PAGA 2 ABERTA)': true,
+    '2 FATURAS (1 ABERTO 2 PAGA)': true,
+    'AGUARDANDO FATURA': false,
+    'CANCELADO': true
   };
 
   let estornoClientes = [], semEstorno = [], aguardandoFatura = [];
@@ -808,36 +814,34 @@ function calcularEstornoPorSafra(safra) {
     const res = classificarEstorno(r, safraDate);
     if (res.estorno) estornoClientes.push(r);
     else semEstorno.push(r);
-    if (res.tipo === 'AGUARDANDO FATURA') aguardandoFatura.push(r);
-    if (det[res.tipo] !== undefined) det[res.tipo]++;
-    else det['SEM ESTORNO']++;
 
     const venc1 = r['VENCIMENTO 1A FATURA'] ? new Date(r['VENCIMENTO 1A FATURA']) : null;
-    const s1raw = (r['STATUS 1A FATURA']||'').toLowerCase();
-    const s2raw = (r['STATUS 2A FATURA']||'').toLowerCase();
-    const s1 = r['STATUS 1A FATURA'] || '--';
-    const s2 = r['STATUS 2A FATURA'] || '--';
+    const s1 = (r['STATUS 1A FATURA']||'').toLowerCase();
+    const s2 = (r['STATUS 2A FATURA']||'').toLowerCase();
+    const f1Aberta = s1 === 'aberta';
+    const f2Aberta = s2 === 'aberta';
 
-    if (res.tipo === 'AGUARDANDO FATURA') {
-      incrGranular('Sem vencimento (aguardando fatura)', false);
-    } else if (!venc1 || isNaN(venc1.getTime())) {
-      incrGranular('Sem vencimento (aguardando fatura)', false);
+    let categoria;
+    if (res.tipo === 'AGUARDANDO FATURA' || !venc1 || isNaN(venc1.getTime())) {
+      categoria = 'AGUARDANDO FATURA';
+      aguardandoFatura.push(r);
     } else {
       const mes1 = venc1.getMonth();
       if (mes1 === 4) {
-        // MAIO -> 1 FATURA (so a 1a importa)
-        incrGranular('1 FATURA - ' + s1, res.estorno);
+        categoria = f1Aberta ? '1 FATURA ABERTA' : '1 FATURA PAGA';
       } else if (mes1 === 2 || mes1 === 3) {
-        // MARCO/ABRIL -> 2 FATURAS (olha as duas)
-        incrGranular('2 FATURAS - 1\u00aa ' + s1 + ' / 2\u00aa ' + s2, res.estorno);
+        if (!f1Aberta && !f2Aberta) categoria = '2 FATURAS - 2 PGS';
+        else if (f1Aberta && f2Aberta) categoria = '2 FATURAS (2 ABERTA)';
+        else if (!f1Aberta && f2Aberta) categoria = '2 FATURAS (1 PAGA 2 ABERTA)';
+        else categoria = '2 FATURAS (1 ABERTO 2 PAGA)';
       } else {
-        incrGranular('Vencimento fora do padr\u00e3o (antes Mar ou Jun+)', false);
+        categoria = 'SEM ESTORNO';
       }
     }
+    det[categoria]++;
   });
 
   det['CANCELADO'] = cancelados.length;
-  if (cancelados.length > 0) detGranular['CANCELADO / BLOQUEADO / SUSPENSO'] = {val: cancelados.length, estorno: true};
 
   const metaEstorno = Math.floor(gross * 0.38);
   const reducao = Math.max(0, estornoClientes.length - metaEstorno);
@@ -867,7 +871,7 @@ function calcularEstornoPorSafra(safra) {
     estornoTratado: estornoClientes.length, estornoClientes,
     semEstorno: semEstorno.length, metaEstorno, reducao,
     pctEstorno, pctMetaEstorno: '38',
-    cobrar: cobrar.length, det, detGranular, safraDate,
+    cobrar: cobrar.length, det, detEstorno, safraDate,
     aguardandoFatura: aguardandoFatura.length,
     faturasEncontradas, deltaGross, pctDeltaGross,
     evolucao, snaps
@@ -1012,37 +1016,27 @@ function renderEstorno() {
 
 function renderDetFaturas(res) {
   const total = res.ativos || 1;
-  const linhas = [
-    {label:'SEM ESTORNO', val: res.det['SEM ESTORNO']||0, estorno:false},
-    {label:'AGUARDANDO FATURA', val: res.det['AGUARDANDO FATURA']||0, estorno:false, neutro:true},
-    {label:'1 FATURA (Maio - aberta)', val: res.det['1 FATURA']||0, estorno:true},
-    {label:'2 FATURAS (Mar/Abr - 1\u00aa ou 2\u00aa aberta)', val: res.det['2 FATURAS']||0, estorno:true},
-  ];
-  const linhaHtml = (label, val, cor) => {
-    const pct = total > 0 ? (val/total*100).toFixed(1) : '0';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem .9rem;border-bottom:1px solid var(--border)">' +
-      '<div style="display:flex;align-items:center;gap:.6rem">' +
-        '<div style="width:8px;height:8px;border-radius:50%;background:' + cor + '"></div>' +
-        '<span style="font-size:.8rem">' + label + '</span>' +
-      '</div>' +
-      '<div style="display:flex;align-items:center;gap:1.2rem">' +
-        '<span style="font-size:.75rem;color:var(--text-light);min-width:40px;text-align:right">' + pct + '%</span>' +
-        '<span style="font-weight:700;color:' + cor + ';font-family:monospace;min-width:55px;text-align:right">' + fmt(val) + '</span>' +
-      '</div>' +
-    '</div>';
-  };
+  const ordem = ['SEM ESTORNO','1 FATURA PAGA','1 FATURA ABERTA','2 FATURAS - 2 PGS',
+    '2 FATURAS (2 ABERTA)','2 FATURAS (1 PAGA 2 ABERTA)','2 FATURAS (1 ABERTO 2 PAGA)',
+    'AGUARDANDO FATURA','CANCELADO'];
   const detEl = document.getElementById('det-faturas');
   if (detEl) {
-    let html = linhas.map(l => linhaHtml(l.label, l.val, l.neutro?'#6B7280':(l.estorno?'#DC2626':'#16A34A'))).join('');
-    html += linhaHtml('CANCELADO / BLOQUEADO / SUSPENSO', res.cancelados, '#DC2626');
-
-    // Detalhamento granular - combinacoes especificas de mes/status que levaram a cada decisao
-    const entradas = Object.entries(res.detGranular||{}).sort((a,b)=>b[1].val-a[1].val);
-    if (entradas.length) {
-      html += '<div style="padding:.6rem .9rem .3rem;background:#F9FAFB;border-bottom:1px solid var(--border);font-size:.68rem;font-weight:700;color:var(--text-light);text-transform:uppercase;letter-spacing:.05em">Detalhamento por combina\u00e7\u00e3o</div>';
-      html += entradas.map(([label, info]) => linhaHtml(label, info.val, info.estorno?'#DC2626':'#16A34A')).join('');
-    }
-    detEl.innerHTML = html;
+    detEl.innerHTML = ordem.map(label => {
+      const val = res.det[label]||0;
+      const estorno = res.detEstorno ? res.detEstorno[label] : false;
+      const cor = estorno ? '#DC2626' : '#16A34A';
+      const pct = total > 0 ? (val/total*100).toFixed(1) : '0';
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:.45rem .9rem;border-bottom:1px solid var(--border)">' +
+        '<div style="display:flex;align-items:center;gap:.6rem">' +
+          '<div style="width:8px;height:8px;border-radius:50%;background:' + cor + '"></div>' +
+          '<span style="font-size:.8rem">' + label + '</span>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:1.2rem">' +
+          '<span style="font-size:.75rem;color:var(--text-light);min-width:40px;text-align:right">' + pct + '%</span>' +
+          '<span style="font-weight:700;color:' + cor + ';font-family:monospace;min-width:55px;text-align:right">' + fmt(val) + '</span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
   }
 }
 
