@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v4</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v5</span>
     </div>
   </div>
 </nav>
@@ -1513,7 +1513,9 @@ async function processarArquivo(file){
       grossConectadas = count||0;
     } catch(e){ console.warn('Erro ao buscar gross conectadas:',e); }
 
-    // rows ja foi declarado como const acima, reusar rowsFiltradas diretamente
+    // Usa rowsFiltradas (ja filtrado por ativacao/emissao) - NAO rows (linhas brutas,
+    // que podem conter duplicatas de NUMERO DE ACESSO de clientes antigos/cancelados
+    // reutilizando o mesmo numero, causando erro de upsert "ON CONFLICT...second time")
     let conectadas=[],offset=0;
     while(true){const{data}=await sb.from('conectadas').select('TELEFONE_PORTADO,NUMERO_LINHA,PORTABILIDADE,NOME,EQUIPE').range(offset,offset+999);if(!data||!data.length)break;conectadas.push(...data);if(data.length<1000)break;offset+=1000;}
     const mapaPort={};
@@ -1532,7 +1534,7 @@ async function processarArquivo(file){
     });
     setUploadProgress(true,'Processando...',40);
     const safraDate=parseSafra(safra);
-    const registros=rows.map(row=>{
+    const registros=rowsFiltradas.map(row=>{
       const numAcesso=limpaTel(getCol(row,'Numero de acesso','N\u00c3\u00bamero de acesso','N\u00famero de acesso','NUMERO_ACESSO'));
       const cpf=(getCol(row,'Cpf','CPF')+'').replace(/\D/g,'');
       const statusAcesso=getCol(row,'Status do numero de acesso','Status do n\u00c3\u00bamero de acesso','Status do n\u00famero de acesso','STATUS_ACESSO');
@@ -1619,11 +1621,27 @@ async function processarArquivo(file){
       TIPO_ESTORNO:tipoEstorno||null
     };
     });
+
+    // Deduplicacao defensiva por NUMERO DE ACESSO (chave do upsert).
+    // Mesmo apos o filtro de ativacao/emissao, mantemos so a ULTIMA ocorrencia de
+    // cada numero, evitando erro do Postgres "ON CONFLICT DO UPDATE ... second time"
+    // quando duas linhas do arquivo caem no mesmo lote com o mesmo NUMERO DE ACESSO.
+    const vistos=new Set();
+    const registrosDedup=[];
+    for(let i=registros.length-1;i>=0;i--){
+      const key=registros[i]['NUMERO DE ACESSO'];
+      if(!key||vistos.has(key)) continue;
+      vistos.add(key);
+      registrosDedup.unshift(registros[i]);
+    }
+    const dupRemovidas=registros.length-registrosDedup.length;
+    if(dupRemovidas>0) console.log('Duplicatas de NUMERO DE ACESSO removidas antes do envio:',dupRemovidas);
+
     setUploadProgress(true,'Enviando para Supabase...',60);
     let inseridos=0,atualizados=0,erros=0;
-    for(let i=0;i<registros.length;i+=500){
-      const batch=registros.slice(i,i+500);
-      setUploadProgress(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registros.length/500)+'...',60+(i/registros.length*35));
+    for(let i=0;i<registrosDedup.length;i+=500){
+      const batch=registrosDedup.slice(i,i+500);
+      setUploadProgress(true,'Lote '+(Math.floor(i/500)+1)+'/'+Math.ceil(registrosDedup.length/500)+'...',60+(i/registrosDedup.length*35));
       // Valid DB columns only - exact names (usado em ambos os modos)
       const VALID_COLS = new Set(['SAFRA','CPF','NOME','NUMERO DE ACESSO','NUMERO PORTADO','NUMERO LINHA',
         'STATUS ACESSO','FATURA','STATUS PAGAMENTO','VALOR','VENCIMENTO','DIAS ATRASO','LINHA DIGITAVEL',
@@ -1666,11 +1684,11 @@ async function processarArquivo(file){
     }
     // Salvar snapshot do dia - GROSS deve vir da tabela 'conectadas' (ativacoes reais da safra),
     // NAO da quantidade de linhas do arquivo de portabilidade que acabou de ser processado
-    const totalEstorno=registros.filter(r=>r['ESTORNO']).length;
-    const grossSnapshot = grossConectadas>0 ? grossConectadas : registros.length;
+    const totalEstorno=registrosDedup.filter(r=>r['ESTORNO']).length;
+    const grossSnapshot = grossConectadas>0 ? grossConectadas : registrosDedup.length;
     const pctSnap=grossSnapshot>0?(totalEstorno/grossSnapshot*100).toFixed(1):'0';
     await salvarSnapshot(safra,pctSnap,totalEstorno,grossSnapshot);
-    await sb.from('historico_uploads').insert({safra,modo,total_registros:registros.length,inseridos:modo==='nova'?inseridos:0,atualizados:modo==='atualizar'?atualizados:0,erros,status:erros===0?'Sucesso':'Parcial',created_at:new Date().toISOString()});
+    await sb.from('historico_uploads').insert({safra,modo,total_registros:registrosDedup.length,inseridos:modo==='nova'?inseridos:0,atualizados:modo==='atualizar'?atualizados:0,erros,status:erros===0?'Sucesso':'Parcial',created_at:new Date().toISOString()});
     setUploadProgress(false,'',100);
     result.innerHTML='<div class="alert alert-ok">Upload concluido! '+fmt(modo==='nova'?inseridos:atualizados)+' registros '+(modo==='nova'?'inseridos':'atualizados')+(erros>0?' - '+erros+' erros':'')+'.</div>';
     await carregarControle();
