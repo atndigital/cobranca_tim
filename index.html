@@ -1708,7 +1708,49 @@ async function processarArquivo(file){
 }
 function setUploadProgress(show,text,pct){const div=document.getElementById('upload-progress');div.style.display=show?'block':'none';document.getElementById('upload-status-text').textContent=text;document.getElementById('upload-bar').style.width=pct+'%';document.getElementById('upload-detail').textContent=show?Math.round(pct)+'% concluido':'';}
 function lerArquivoLatin1(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>resolve(e.target.result);reader.onerror=reject;reader.readAsText(file,'latin1');});}
-function parseCSV(text){const lines=text.split('\n').filter(l=>l.trim());if(lines.length<2)return[];const sep=lines[0].includes(';')?';':',';const headers=lines[0].split(sep).map(h=>h.trim().replace(/^"|"$/g,''));return lines.slice(1).filter(l=>l.trim()).map(line=>{const vals=line.split(sep).map(v=>v.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,i)=>obj[h]=vals[i]||'');return obj;});}
+// Parser de uma linha CSV respeitando campos entre aspas (RFC4180 simplificado).
+// Necessario porque o arquivo da TIM usa aspas para valores como "R$32,99"
+// (virgula dentro do campo) - um split ingenuo por separador desalinha as colunas
+// seguintes da linha inteira, fazendo a leitura de status de fatura falhar silenciosamente.
+function parseCSVLine(line, sep){
+  const result=[];
+  let cur='';
+  let inQuotes=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(inQuotes){
+      if(c==='"'){
+        if(line[i+1]==='"'){ cur+='"'; i++; }
+        else { inQuotes=false; }
+      } else {
+        cur+=c;
+      }
+    } else {
+      if(c==='"'){
+        inQuotes=true;
+      } else if(c===sep){
+        result.push(cur);
+        cur='';
+      } else {
+        cur+=c;
+      }
+    }
+  }
+  result.push(cur);
+  return result;
+}
+function parseCSV(text){
+  const lines=text.split('\n').filter(l=>l.trim());
+  if(lines.length<2)return[];
+  const sep=lines[0].includes(';')?';':',';
+  const headers=parseCSVLine(lines[0],sep).map(h=>h.trim());
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const vals=parseCSVLine(line,sep).map(v=>v.trim());
+    const obj={};
+    headers.forEach((h,i)=>obj[h]=vals[i]||'');
+    return obj;
+  });
+}
 function limpaTel(v){return String(v||'').replace(/\D/g,'').slice(-11);}
 function converteData(v){if(!v)return null;const p=v.split('/');if(p.length===3)return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');return v;}
 function determinarEtapa(dias,portabilidade,statusAcesso,statusFatura){
