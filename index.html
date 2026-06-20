@@ -1441,6 +1441,8 @@ async function processarArquivo(file){
     const mesNum = mesNums[mes]||0;
     const anoNum = parseInt(ano);
 
+    const getCol=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
+
     // Verificar duplicidade pela coluna "Data final do processamento" (col AF)
     const getDataProcessamento = (row) => {
       return getCol(row,'Data final do processamento','Data final do processamento','DATA_FINAL_PROCESSAMENTO')||'';
@@ -1529,7 +1531,6 @@ async function processarArquivo(file){
       if(lin9&&!mapaPort[lin9]) mapaPort[lin9]=obj;
     });
     setUploadProgress(true,'Processando...',40);
-    const getCol=(row,...names)=>{for(const n of names){if(row[n]!==undefined&&row[n]!=='')return row[n];}return'';};
     const safraDate=parseSafra(safra);
     const registros=rows.map(row=>{
       const numAcesso=limpaTel(getCol(row,'Numero de acesso','N\u00c3\u00bamero de acesso','N\u00famero de acesso','NUMERO_ACESSO'));
@@ -1663,10 +1664,12 @@ async function processarArquivo(file){
         }
       }
     }
-    // Salvar snapshot do dia
+    // Salvar snapshot do dia - GROSS deve vir da tabela 'conectadas' (ativacoes reais da safra),
+    // NAO da quantidade de linhas do arquivo de portabilidade que acabou de ser processado
     const totalEstorno=registros.filter(r=>r['ESTORNO']).length;
-    const pctSnap=registros.length>0?(totalEstorno/registros.length*100).toFixed(1):'0';
-    await salvarSnapshot(safra,pctSnap,totalEstorno,registros.length);
+    const grossSnapshot = grossConectadas>0 ? grossConectadas : registros.length;
+    const pctSnap=grossSnapshot>0?(totalEstorno/grossSnapshot*100).toFixed(1):'0';
+    await salvarSnapshot(safra,pctSnap,totalEstorno,grossSnapshot);
     await sb.from('historico_uploads').insert({safra,modo,total_registros:registros.length,inseridos:modo==='nova'?inseridos:0,atualizados:modo==='atualizar'?atualizados:0,erros,status:erros===0?'Sucesso':'Parcial',created_at:new Date().toISOString()});
     setUploadProgress(false,'',100);
     result.innerHTML='<div class="alert alert-ok">Upload concluido! '+fmt(modo==='nova'?inseridos:atualizados)+' registros '+(modo==='nova'?'inseridos':'atualizados')+(erros>0?' - '+erros+' erros':'')+'.</div>';
