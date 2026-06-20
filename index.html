@@ -207,7 +207,7 @@ input:focus,select:focus{border-color:var(--blue);background:#fff;}
     <div style="font-size:.68rem;color:#374151;margin-top:.4rem" id="sb-datetime"></div>
     <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-dark);display:flex;justify-content:space-between;align-items:center">
       <span style="font-size:.62rem;color:#4B5563">Controle de Faturas</span>
-      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v5</span>
+      <span style="font-size:.62rem;font-weight:700;background:#063b88;color:#fff;padding:1px 7px;border-radius:20px">v6</span>
     </div>
   </div>
 </nav>
@@ -1707,7 +1707,30 @@ async function processarArquivo(file){
   }catch(e){setUploadProgress(false,'',0);result.innerHTML='<div class="alert alert-err">Erro: '+e.message+'</div>';console.error(e);}
 }
 function setUploadProgress(show,text,pct){const div=document.getElementById('upload-progress');div.style.display=show?'block':'none';document.getElementById('upload-status-text').textContent=text;document.getElementById('upload-bar').style.width=pct+'%';document.getElementById('upload-detail').textContent=show?Math.round(pct)+'% concluido':'';}
-function lerArquivoLatin1(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=e=>resolve(e.target.result);reader.onerror=reject;reader.readAsText(file,'latin1');});}
+// Le o arquivo detectando o encoding: tenta UTF-8 primeiro (com deteccao de erro via
+// caractere de substituicao U+FFFD), cai para Latin-1 se nao for UTF-8 valido.
+// Necessario porque a TIM as vezes exporta em UTF-8, as vezes em Latin-1/Windows-1252,
+// e ler com o encoding errado corrompe caracteres acentuados (ª, ç, ã) usados nos
+// nomes de coluna ("1ª fatura..."), fazendo o parser nao encontrar as colunas e
+// tratando tudo como se nao houvesse fatura aberta.
+function lerArquivoLatin1(file){
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const buffer=e.target.result;
+      const utf8Text=new TextDecoder('utf-8',{fatal:false}).decode(buffer);
+      if(utf8Text.includes('\uFFFD')){
+        // UTF-8 invalido detectado (caractere de substituicao) - tenta Latin-1
+        const latin1Text=new TextDecoder('windows-1252',{fatal:false}).decode(buffer);
+        resolve(latin1Text);
+      } else {
+        resolve(utf8Text);
+      }
+    };
+    reader.onerror=reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
 // Parser de uma linha CSV respeitando campos entre aspas (RFC4180 simplificado).
 // Necessario porque o arquivo da TIM usa aspas para valores como "R$32,99"
 // (virgula dentro do campo) - um split ingenuo por separador desalinha as colunas
