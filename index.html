@@ -590,6 +590,7 @@ const INTERVALO_ENVIO = 2; // dias entre envios
 
 let sb = null, webhookUrl = '';
 let dadosControle = [], dadosRespostas = [], dadosHistorico = [], dadosHistEnvios = [], dadosSnapshots = [];
+let grossPorMes = {}; // GROSS real (tabela conectadas) por mes/ano (chave 'YYYY-MM'), carregado uma vez e usado ao vivo em vez de snapshots desatualizados
 let ctrlPage = 0, respPage = 0;
 
 // INIT
@@ -674,7 +675,8 @@ async function recarregarTudo() {
     carregarHistorico(),
     carregarHistEnvios(),
     carregarRespostasData(),
-    carregarSnapshots()
+    carregarSnapshots(),
+    carregarGrossPorMesCache()
   ]);
   atualizarDashboard();
   ocultarLoading();
@@ -777,9 +779,19 @@ function calcularEstornoPorSafra(safra) {
   const dados = dadosControle.filter(r => !safra || r['SAFRA'] === safra);
   const safraDate = parseSafra(safra || (dados[0] && dados[0].SAFRA));
 
-  // GROSS = total de ativacoes do mes na tabela conectadas (via ultimo snapshot salvo)
-  const ultimoSnap = dadosSnapshots.filter(s=>s['SAFRA']===safra).sort((a,b)=>a['DATA']>b['DATA']?-1:1)[0];
-  const gross = ultimoSnap&&ultimoSnap['GROSS'] ? ultimoSnap['GROSS'] : dados.length;
+  // GROSS = total de ativacoes do mes na tabela conectadas, calculado AO VIVO
+  // a partir do cache grossPorMes (carregado de conectadas), nao de snapshots
+  // que podem ter sido salvos com um GROSS desatualizado em uploads anteriores.
+  // Fallback: snapshot mais recente, depois dados.length, se o cache nao existir.
+  let gross = 0;
+  if (safraDate) {
+    const ym = safraDate.getFullYear() + '-' + String(safraDate.getMonth()+1).padStart(2,'0');
+    if (grossPorMes && grossPorMes[ym] !== undefined) gross = grossPorMes[ym];
+  }
+  if (!gross) {
+    const ultimoSnap = dadosSnapshots.filter(s=>s['SAFRA']===safra).sort((a,b)=>a['DATA']>b['DATA']?-1:1)[0];
+    gross = ultimoSnap&&ultimoSnap['GROSS'] ? ultimoSnap['GROSS'] : dados.length;
+  }
   const ativos = dados.filter(r => r['STATUS ACESSO'] === 'Ativo');
   const cancelados = dados.filter(r => r['STATUS ACESSO'] !== 'Ativo');
 
@@ -1738,6 +1750,7 @@ async function processarArquivo(file){
     setUploadProgress(false,'',100);
     result.innerHTML='<div class="alert alert-ok">Upload concluido! '+fmt(modo==='nova'?inseridos:atualizados)+' registros '+(modo==='nova'?'inseridos':'atualizados')+(erros>0?' - '+erros+' erros':'')+'.</div>';
     await carregarControle();
+    await carregarGrossPorMesCache();
     atualizarDashboard();
   }catch(e){setUploadProgress(false,'',0);result.innerHTML='<div class="alert alert-err">Erro: '+e.message+'</div>';console.error(e);}
 }
@@ -1991,6 +2004,25 @@ function setUploadProgressCon(show,text,pct){
   const det=document.getElementById('upload-detail-con');if(det)det.textContent=show?Math.round(pct)+'% concluido':'';
 }
 
+// Carrega o GROSS real (tabela conectadas) por mes/ano e guarda em grossPorMes,
+// para uso ao vivo em calcularEstornoPorSafra (em vez de depender de snapshots
+// que podem estar desatualizados em relacao ao estado atual de conectadas).
+async function carregarGrossPorMesCache() {
+  if(!sb) return;
+  try {
+    const {data,error}=await sb.from('conectadas').select('DATA_ATIVACAO').not('DATA_ATIVACAO','is',null);
+    if(error||!data) return;
+    const counts={};
+    data.forEach(r=>{
+      let raw=r.DATA_ATIVACAO||'';
+      if(/^\d{2}\/\d{2}\/\d{4}$/.test(raw)){const p=raw.split('/');raw=p[2]+'-'+p[1];}
+      else{raw=raw.slice(0,7);}
+      if(raw&&raw.length===7)counts[raw]=(counts[raw]||0)+1;
+    });
+    grossPorMes = counts;
+  } catch(e){ console.warn('carregarGrossPorMesCache erro:', e.message); }
+}
+
 async function carregarGrossPorMes() {
   if(!sb)return;
   const div=document.getElementById('gross-por-mes');if(!div)return;
@@ -2006,6 +2038,7 @@ async function carregarGrossPorMes() {
       else{raw=raw.slice(0,7);}
       if(raw&&raw.length===7)counts[raw]=(counts[raw]||0)+1;
     });
+    grossPorMes = counts; // mantem o cache global tambem atualizado quando essa tela e aberta
     const meses=Object.keys(counts).sort().reverse().slice(0,12);
     const ML={'01':'Janeiro','02':'Fevereiro','03':'Marco','04':'Abril','05':'Maio','06':'Junho',
                '07':'Julho','08':'Agosto','09':'Setembro','10':'Outubro','11':'Novembro','12':'Dezembro'};
