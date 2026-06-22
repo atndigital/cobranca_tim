@@ -730,15 +730,21 @@ function classificarEstorno(cliente, safraDate) {
   // Sem data de vencimento da 1a fatura nao da para classificar
   if (!venc1 || isNaN(venc1.getTime())) return {estorno: false, tipo: 'AGUARDANDO FATURA'};
 
+  // IMPORTANTE: usa metodos UTC (getUTCFullYear/getUTCMonth), nao locais
+  // (getFullYear/getMonth). Datas vindas do banco como 'YYYY-MM-DD' (sem hora)
+  // sao interpretadas pelo JS como meia-noite UTC. Em fusos negativos (Brasil,
+  // UTC-3), os metodos locais (getMonth/getFullYear) "voltam" para o dia/mes
+  // anterior, classificando errado clientes com vencimento no dia 1 do mes.
+
   // Protecao contra corrupcao de data (ano implausivel)
-  if (venc1.getFullYear() < 2026) return {estorno: false, tipo: 'SEM ESTORNO'};
+  if (venc1.getUTCFullYear() < 2026) return {estorno: false, tipo: 'SEM ESTORNO'};
 
   const status1 = (cliente['STATUS 1A FATURA'] || '').toLowerCase();
   const status2 = (cliente['STATUS 2A FATURA'] || '').toLowerCase();
   const fat1Aberta = status1 === 'aberta';
   const fat2Aberta = status2 === 'aberta';
 
-  const mes1 = venc1.getMonth(); // 0=Jan ... 11=Dez
+  const mes1 = venc1.getUTCMonth(); // 0=Jan ... 11=Dez
 
   // Junho (5) em diante -> nunca estorno
   if (mes1 >= 5) return {estorno: false, tipo: 'SEM ESTORNO'};
@@ -838,7 +844,7 @@ function calcularEstornoPorSafra(safra) {
       categoria = 'AGUARDANDO FATURA';
       aguardandoFatura.push(r);
     } else {
-      const mes1 = venc1.getMonth();
+      const mes1 = venc1.getUTCMonth();
       if (mes1 === 4) {
         categoria = f1Aberta ? '1 FATURA ABERTA' : '1 FATURA PAGA';
       } else if (mes1 === 2 || mes1 === 3) {
